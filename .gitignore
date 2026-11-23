@@ -1,0 +1,4 @@
+bin/
+/clash-gen
+.cache/
+coverage.out

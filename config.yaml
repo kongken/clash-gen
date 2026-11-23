@@ -1,0 +1,9 @@
+environment: "local"
+base_url: "http://localhost:8080"
+
+log:
+  level: "info"
+  format: "text"
+  add_source: false
+
+otel: {}
