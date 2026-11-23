@@ -38,3 +38,17 @@ internal/http/     # Gin REST routes
 
 `.github/workflows/go.yml` runs build + tests with the race detector on
 push/PR to `main`. Docker images are published via `docker-publish.yml`.
+
+## Agent skills
+
+### Issue tracker
+
+Read or publish issues in GitHub Issues for `kongken/clash-gen`. See `docs/agents/issue-tracker.md` for commands and conventions.
+
+### Triage labels
+
+Use the default Matt Pocock triage labels when triaging issues. See `docs/agents/triage-labels.md` for the role mapping.
+
+### Domain docs
+
+Use the single-context glossary and ADR layout when exploring domain concepts or decisions. See `docs/agents/domain.md`.
