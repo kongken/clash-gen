@@ -192,6 +192,7 @@ func TestPublicationSurvivesStorageFailuresAndConcurrentEdits(t *testing.T) {
 
 type publicationProxy struct {
 	url          string
+	unavailable  atomic.Bool
 	denyPut      atomic.Bool
 	denyDelete   atomic.Bool
 	deniedDelete chan struct{}
@@ -208,7 +209,7 @@ func newPublicationProxy(t *testing.T, endpoint string) *publicationProxy {
 	upstream := httputil.NewSingleHostReverseProxy(target)
 	proxy := &publicationProxy{deniedDelete: make(chan struct{}, 1)}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if (r.Method == http.MethodPut && proxy.denyPut.Load()) || (r.Method == http.MethodDelete && proxy.denyDelete.Load()) {
+		if proxy.unavailable.Load() || (r.Method == http.MethodPut && proxy.denyPut.Load()) || (r.Method == http.MethodDelete && proxy.denyDelete.Load()) {
 			if r.Method == http.MethodDelete {
 				select {
 				case proxy.deniedDelete <- struct{}{}:
