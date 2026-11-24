@@ -56,6 +56,23 @@ func (p *adminPanel) download(c *gin.Context) {
 	}
 }
 
+func (p *adminPanel) resetLink(c *gin.Context) {
+	id := c.Param("id")
+	err := p.store.ResetDownloadToken(c.Request.Context(), id)
+	switch {
+	case errors.Is(err, subscription.ErrNotFound):
+		c.String(http.StatusNotFound, "找不到订阅。")
+	case errors.Is(err, subscription.ErrNotPublished):
+		p.renderEdit(c, http.StatusConflict, "请先发布订阅，再重设链接。", "")
+	case errors.Is(err, subscription.ErrConflict):
+		p.renderEdit(c, http.StatusConflict, "订阅状态已更新，请重试。", "")
+	case err != nil:
+		p.renderEdit(c, http.StatusServiceUnavailable, "暂时无法重设订阅链接，请重试。", "")
+	default:
+		c.Redirect(http.StatusSeeOther, subscriptionPath(id)+"?link-reset=1")
+	}
+}
+
 func downloadLink(baseURL *url.URL, sub subscription.Subscription) string {
 	if sub.Publication == nil || sub.DownloadToken == "" || baseURL == nil {
 		return ""
