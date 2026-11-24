@@ -65,6 +65,23 @@ through the new one. Confirming deletion removes download access immediately,
 and the service retries object cleanup in the background. Changing
 `admin_token` and restarting the service invalidates existing admin sessions.
 
+## Acceptance tests
+
+`make test` runs the Gin HTTP suite. To include the Redis and object-store
+acceptance tests, point the suite at an isolated Redis database and a private
+MinIO bucket with test credentials. Set `CLASH_GEN_TEST_MIHOMO` to the local
+Mihomo executable to have it load the generated YAML.
+
+```sh
+CLASH_GEN_TEST_REDIS_URL=redis://127.0.0.1:6379/8 \
+CLASH_GEN_TEST_S3_ENDPOINT=http://127.0.0.1:9000 \
+CLASH_GEN_TEST_S3_BUCKET=clash-gen-test \
+CLASH_GEN_TEST_S3_ACCESS_KEY_ID=example-test-key \
+CLASH_GEN_TEST_S3_SECRET_ACCESS_KEY=example-test-secret \
+CLASH_GEN_TEST_MIHOMO=/path/to/mihomo \
+go test -race -count=1 ./...
+```
+
 ## Commands
 
 | Task | Command |
