@@ -1,15 +1,28 @@
-// Package http contains the Gin REST routes for clash-gen.
+// Package http contains the Gin routes for clash-gen.
 package http
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
-// RegisterRoutes mounts all HTTP routes on r.
-func RegisterRoutes(r *gin.Engine) {
+// PanelOptions configures the administrator panel.
+type PanelOptions struct {
+	AdminToken    string
+	Redis         redis.UniversalClient
+	SecureCookie  bool
+	RegisterAdmin func(*gin.RouterGroup)
+}
+
+// RegisterRoutes mounts all configured HTTP routes on r.
+func RegisterRoutes(r *gin.Engine, options ...PanelOptions) {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
+	if len(options) > 0 && options[0].AdminToken != "" && options[0].Redis != nil {
+		registerPanelAssets(r)
+		registerAdminAuth(r, options[0])
+	}
 }

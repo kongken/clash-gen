@@ -8,6 +8,7 @@ import "log/slog"
 type ServiceConfig struct {
 	Environment string `yaml:"environment"`
 	BaseURL     string `yaml:"base_url"`
+	AdminToken  string `yaml:"admin_token"`
 }
 
 // Print logs the loaded configuration; required by the butterfly AppConfig interface.
