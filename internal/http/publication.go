@@ -32,7 +32,7 @@ func (p *adminPanel) publish(c *gin.Context) {
 	case errors.Is(err, subscription.ErrConflict):
 		p.renderEdit(c, http.StatusConflict, "草稿或发布状态已更新。请检查最新草稿后重新发布。", "")
 	case errors.Is(err, subscription.ErrUploadFailed):
-		p.renderEdit(c, http.StatusBadGateway, "上传失败，请重试。上一次成功发布的版本仍然可用。", "")
+		p.renderEdit(c, http.StatusBadGateway, "上传失败，请重试。", "")
 	case err != nil:
 		p.renderEdit(c, http.StatusServiceUnavailable, "暂时无法完成发布，请重试。", "")
 	default:

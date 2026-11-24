@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	// ObjectTimeout bounds uploads, downloads, and cleanup requests.
 	ObjectTimeout = 30 * time.Second
 	stagingGrace  = 2 * time.Minute
 	retiredGrace  = 30 * time.Second
@@ -54,14 +55,16 @@ func (p *Publisher) Publish(ctx context.Context, id string, version uint64, draf
 		return DraftValidationError{err}
 	}
 
+	// Start the timeout before staging, so an upload cannot begin after
+	// a paused publisher wakes up past its staging deadline.
+	uploadCtx, cancel := context.WithTimeout(ctx, ObjectTimeout)
+	defer cancel()
 	key := p.objects.prefix + id + "/" + rand.Text() + ".yaml"
-	candidate, err := p.store.stagePublication(ctx, id, key, version, draft)
+	candidate, err := p.store.stagePublication(uploadCtx, id, key, version, draft)
 	if err != nil {
 		return err
 	}
-	uploadCtx, cancel := context.WithTimeout(ctx, ObjectTimeout)
 	err = p.objects.put(uploadCtx, key, yaml)
-	cancel()
 	if err != nil {
 		// A transport failure may outlive this PUT call. Leave the staged
 		// object for cleanup after the settling period.
