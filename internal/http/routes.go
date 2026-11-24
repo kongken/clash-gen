@@ -10,10 +10,9 @@ import (
 
 // PanelOptions configures the administrator panel.
 type PanelOptions struct {
-	AdminToken    string
-	Redis         redis.UniversalClient
-	SecureCookie  bool
-	RegisterAdmin func(*gin.RouterGroup)
+	AdminToken   string
+	Redis        redis.UniversalClient
+	SecureCookie bool
 }
 
 // RegisterRoutes mounts all configured HTTP routes on r.

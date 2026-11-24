@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kongken/clash-gen/internal/subscription"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -48,14 +49,7 @@ func registerAdminAuth(r *gin.Engine, options PanelOptions) {
 	r.POST("/login", sensitiveRequest, requireSameOrigin, auth.login)
 	admin := r.Group("/admin", sensitiveRequest, requireSameOrigin, auth.requireSession)
 	admin.POST("/logout", auth.logout)
-	if options.RegisterAdmin != nil {
-		options.RegisterAdmin(admin)
-	} else {
-		admin.GET("", func(c *gin.Context) {
-			c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(
-				`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Clash 订阅管理</title><link rel="stylesheet" href="/assets/panel.css"><main><h1>Clash 订阅管理</h1><form method="post" action="/admin/logout"><button>登出</button></form></main></html>`))
-		})
-	}
+	registerSubscriptions(admin, subscription.NewStore(options.Redis))
 }
 
 func sensitiveRequest(c *gin.Context) {
