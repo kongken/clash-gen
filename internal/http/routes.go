@@ -22,6 +22,7 @@ func RegisterRoutes(r *gin.Engine, options ...PanelOptions) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 	if len(options) > 0 && options[0].AdminToken != "" && options[0].Redis != nil {
+		registerPanelAssets(r)
 		registerAdminAuth(r, options[0])
 	}
 }
