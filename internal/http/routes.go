@@ -3,8 +3,10 @@ package http
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
+	"github.com/kongken/clash-gen/internal/subscription"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -13,6 +15,8 @@ type PanelOptions struct {
 	AdminToken   string
 	Redis        redis.UniversalClient
 	SecureCookie bool
+	BaseURL      *url.URL
+	Publisher    *subscription.Publisher
 }
 
 // RegisterRoutes mounts all configured HTTP routes on r.

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
+	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kongken/clash-gen/internal/subscription"
@@ -16,12 +18,15 @@ var adminHTML embed.FS
 
 var adminTemplates = template.Must(template.New("admin").Funcs(template.FuncMap{
 	"shadowsocksCiphers": subscription.ShadowsocksCiphers,
+	"formatPublishedAt":  func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04:05 UTC") },
 	"vmessCiphers":       subscription.VMessCiphers,
 	"emptyNode":          func() subscription.Node { return subscription.Node{Type: "ss"} },
 }).ParseFS(adminHTML, "templates/admin_*.html"))
 
 type adminPanel struct {
-	store *subscription.Store
+	store     *subscription.Store
+	publisher *subscription.Publisher
+	baseURL   *url.URL
 }
 
 type listPage struct {
@@ -37,16 +42,28 @@ type editPage struct {
 	Preview      string
 	Error        string
 	Notice       string
+	CanPublish   bool
+	DownloadLink string
 }
 
-func registerSubscriptions(admin *gin.RouterGroup, store *subscription.Store) {
-	panel := &adminPanel{store: store}
+func registerSubscriptions(r *gin.Engine, admin *gin.RouterGroup, options PanelOptions) {
+	panel := &adminPanel{
+		store:     subscription.NewStore(options.Redis),
+		publisher: options.Publisher,
+		baseURL:   options.BaseURL,
+	}
 	admin.GET("", panel.list)
 	admin.POST("/subscriptions", panel.create)
 	admin.GET("/subscriptions/:id", panel.edit)
 	admin.POST("/subscriptions/:id", panel.save)
 	admin.POST("/subscriptions/:id/preview", panel.preview)
+	if panel.canPublish() {
+		admin.POST("/subscriptions/:id/publish", panel.publish)
+		r.GET("/subscription/:id", sensitiveRequest, panel.download)
+	}
 }
+
+func (p *adminPanel) canPublish() bool { return p.publisher != nil && p.baseURL != nil }
 
 func (p *adminPanel) list(c *gin.Context) {
 	p.renderList(c, http.StatusOK, "", "")
@@ -80,8 +97,11 @@ func (p *adminPanel) create(c *gin.Context) {
 
 func (p *adminPanel) edit(c *gin.Context) {
 	var notice string
-	if c.Query("saved") == "1" {
+	switch {
+	case c.Query("saved") == "1":
 		notice = "草稿已保存。"
+	case c.Query("published") == "1":
+		notice = "订阅已发布。"
 	}
 	p.renderEdit(c, http.StatusOK, "", notice)
 }
@@ -136,6 +156,8 @@ func (p *adminPanel) renderEditPage(c *gin.Context, status int, page editPage) {
 		c.String(http.StatusServiceUnavailable, "暂时无法读取草稿，请重试。")
 	default:
 		page.Subscription = sub
+		page.CanPublish = p.canPublish()
+		page.DownloadLink = downloadLink(p.baseURL, sub)
 		if page.Version == 0 {
 			page.Draft = sub.Draft
 			page.Version = sub.DraftVersion

@@ -6,13 +6,15 @@
   <title>{{.Draft.Name}} · Clash 订阅管理</title>
   <link rel="stylesheet" href="/assets/panel.css">
   <script src="/assets/draft.js" defer></script>
+  {{if .DownloadLink}}<script src="/assets/publication.js" defer></script>{{end}}
 </head>
 <body>
   {{template "admin_header"}}
   <main class="panel-container">
     <p><a href="/admin">返回订阅列表</a></p>
     <h1>编辑订阅</h1>
-    <p class="status-label">未发布</p>
+    <p class="status-label">{{template "admin_publication_status" .Subscription}}</p>
+    {{with .Subscription.Publication}}<p>最近成功发布 <time datetime="{{.PublishedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{formatPublishedAt .PublishedAt}}</time></p>{{end}}
     {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
     {{if .Notice}}<p class="form-notice" role="status">{{.Notice}}</p>{{end}}
     <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}">
@@ -29,8 +31,10 @@
       <div class="form-actions">
         <button class="button-primary" type="submit">保存草稿</button>
         <button type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/preview">预览 YAML</button>
+        {{if .CanPublish}}<button type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/publish">发布订阅</button>{{end}}
       </div>
     </form>
+    {{if .DownloadLink}}{{template "admin_publication_link" .}}{{end}}
     {{if .Preview}}
     <section class="panel-section" aria-labelledby="yaml-heading">
       <h2 id="yaml-heading">Mihomo YAML 预览</h2>

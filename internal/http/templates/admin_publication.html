@@ -1,0 +1,15 @@
+{{define "admin_publication_status" -}}
+{{if not .Publication}}未发布{{else if ne .DraftVersion .Publication.DraftVersion}}有未发布变更{{else}}已发布{{end -}}
+{{end}}
+
+{{define "admin_publication_link"}}
+<section class="panel-section" aria-labelledby="published-link-heading">
+  <h2 id="published-link-heading">订阅链接</h2>
+  <div class="form-row">
+    <label for="download-link">下载地址</label>
+    <input id="download-link" value="{{.DownloadLink}}" type="url" readonly>
+    <button type="button" id="copy-download-link">复制链接</button>
+  </div>
+  <p id="copy-feedback" role="status" hidden></p>
+</section>
+{{end}}

@@ -13,9 +13,15 @@ var panelCSS []byte
 //go:embed assets/draft.js
 var draftJS []byte
 
+//go:embed assets/publication.js
+var publicationJS []byte
+
 func registerPanelAssets(r *gin.Engine) {
 	r.GET("/assets/draft.js", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/javascript; charset=utf-8", draftJS)
+	})
+	r.GET("/assets/publication.js", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/javascript; charset=utf-8", publicationJS)
 	})
 	r.GET("/assets/panel.css", func(c *gin.Context) {
 		c.Data(http.StatusOK, "text/css; charset=utf-8", panelCSS)

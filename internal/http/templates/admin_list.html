@@ -23,7 +23,7 @@
       {{if .Subscriptions}}
       <ul class="subscription-list">
         {{range .Subscriptions}}
-        <li><a href="/admin/subscriptions/{{.ID}}">{{.Draft.Name}}</a> <span class="status-label">未发布</span></li>
+        <li><a href="/admin/subscriptions/{{.ID}}">{{.Draft.Name}}</a> <span class="status-label">{{template "admin_publication_status" .}}</span></li>
         {{end}}
       </ul>
       {{else}}
