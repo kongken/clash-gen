@@ -8,18 +8,12 @@ import (
 )
 
 type mihomoConfig struct {
-	MixedPort int              `yaml:"mixed-port"`
-	AllowLAN  bool             `yaml:"allow-lan"`
-	Mode      string           `yaml:"mode"`
-	LogLevel  string           `yaml:"log-level"`
-	DNS       mihomoDNS        `yaml:"dns"`
-	Proxies   []map[string]any `yaml:"proxies"`
-	Groups    []proxyGroup     `yaml:"proxy-groups"`
-	Rules     []string         `yaml:"rules"`
-}
-
-type mihomoDNS struct {
-	Enable bool `yaml:"enable"`
+	Settings mihomoSettings   `yaml:",inline"`
+	AllowLAN bool             `yaml:"allow-lan"`
+	Mode     string           `yaml:"mode"`
+	Proxies  []map[string]any `yaml:"proxies"`
+	Groups   []proxyGroup     `yaml:"proxy-groups"`
+	Rules    []string         `yaml:"rules"`
 }
 
 type proxyGroup struct {
@@ -49,13 +43,20 @@ func GenerateYAML(draft Draft) ([]byte, error) {
 		names = append(names, name)
 		proxies = append(proxies, proxy)
 	}
+	settings, err := draft.Settings.mihomo()
+	if err != nil {
+		return nil, err
+	}
+	rules, err := draft.mihomoRules()
+	if err != nil {
+		return nil, err
+	}
 	output, err := yaml.Marshal(mihomoConfig{
-		MixedPort: 7890,
-		Mode:      "rule",
-		LogLevel:  "info",
-		Proxies:   proxies,
-		Groups:    []proxyGroup{{Name: "PROXY", Type: "select", Proxies: names}},
-		Rules:     []string{"MATCH,PROXY"},
+		Settings: settings,
+		Mode:     "rule",
+		Proxies:  proxies,
+		Groups:   []proxyGroup{{Name: "PROXY", Type: "select", Proxies: names}},
+		Rules:    rules,
 	})
 	if err != nil {
 		return nil, errors.New("无法生成 Mihomo YAML。")

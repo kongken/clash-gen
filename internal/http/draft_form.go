@@ -29,7 +29,11 @@ func readDraftPost(c *gin.Context) (uint64, subscription.Draft, error) {
 	if err != nil {
 		return 0, subscription.Draft{}, err
 	}
-	return version, subscription.Draft{Name: form.Get("name"), Nodes: nodes}, nil
+	draft := subscription.Draft{Name: form.Get("name"), Nodes: nodes}
+	if err := readRulesAndSettings(form, &draft); err != nil {
+		return 0, subscription.Draft{}, err
+	}
+	return version, draft, nil
 }
 
 func readNodes(form url.Values) ([]subscription.Node, error) {

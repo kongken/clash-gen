@@ -28,8 +28,11 @@ var (
 
 // Draft is the editable configuration of one subscription.
 type Draft struct {
-	Name  string `json:"name"`
-	Nodes []Node `json:"nodes,omitempty"`
+	Name        string   `json:"name"`
+	Nodes       []Node   `json:"nodes,omitempty"`
+	Rules       []Rule   `json:"rules,omitempty"`
+	MatchTarget string   `json:"match_target,omitempty"`
+	Settings    Settings `json:"settings,omitzero"`
 }
 
 // Subscription contains a draft and the revision used for optimistic writes.
