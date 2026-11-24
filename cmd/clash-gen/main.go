@@ -26,7 +26,9 @@ func main() {
 		Namespace: "kongken",
 		Config:    svcConfig,
 		Router: func(r *gin.Engine) {
-			apihttp.RegisterRoutes(r, panel)
+			if err := apihttp.RegisterRoutes(r, panel); err != nil {
+				panic(err)
+			}
 		},
 		InitFunc: []func() error{
 			func() error {

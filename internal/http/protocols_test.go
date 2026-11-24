@@ -17,35 +17,8 @@ const (
 
 func TestMixedProtocolDraftAndPreview(t *testing.T) {
 	router, cookie, path := newDraftEditor(t, "多协议订阅")
-	names := []string{
-		"Shadowsocks", "VMess TCP", "VMess TCP TLS", "VMess WS", "VMess WS TLS",
-		"VLESS TCP", "VLESS TCP TLS", "VLESS WS", "VLESS WS TLS", "VLESS REALITY", "VLESS Vision",
-		"Trojan TCP", "Trojan WS",
-	}
-	form := url.Values{
-		"name": {"多协议订阅"}, "version": {"1"}, "node_name": names,
-		"node_type":             {"ss", "vmess", "vmess", "vmess", "vmess", "vless", "vless", "vless", "vless", "vless", "vless", "trojan", "trojan"},
-		"node_network":          {"", "tcp", "tcp", "ws", "ws", "tcp", "tcp", "ws", "ws", "tcp", "tcp", "tcp", "ws"},
-		"node_security":         {"", "", "tls", "", "tls", "", "tls", "", "tls", "reality", "reality", "", ""},
-		"node_sni":              {"", "", "vmess.example.test", "", "", "", "", "", "", "cover.example.test", "cover.example.test", "trojan.example.test", ""},
-		"node_password":         {"fictional-ss", "", "", "", "", "", "", "", "", "", "", "fictional-trojan", "fictional-trojan-ws"},
-		"node_cipher":           {"aes-128-gcm", "", "", "", "", "", "", "", "", "", "", "", ""},
-		"node_ws_path":          {"", "", "", "/data", "/vmess", "", "", "", "/vless?lane=1", "", "", "", "/trojan"},
-		"node_ws_host":          {"", "", "", "", "front.example.test:8443", "", "", "", "", "", "", "", "trojan-ws.example.test"},
-		"node_alter_id":         {"", "", "", "16", "0", "", "", "", "", "", "", "", ""},
-		"node_vmess_cipher":     {"", "", "", "aes-128-gcm", "", "", "", "", "", "", "", "", ""},
-		"node_reality_key":      {"", "", "", "", "", "", "", "", "", fixturePublicKey, fixturePublicKey, "", ""},
-		"node_reality_short_id": {"", "", "", "", "", "", "", "", "", "", "0123abcd", "", ""},
-		"node_flow":             {"", "", "", "", "", "", "", "", "", "", "xtls-rprx-vision", "", ""},
-	}
-	for index, nodeType := range form["node_type"] {
-		form.Add("node_server", "192.0.2.10")
-		form.Add("node_port", "443")
-		form.Add("node_uuid", "")
-		if nodeType == "vmess" || nodeType == "vless" {
-			form["node_uuid"][index] = fixtureUUID
-		}
-	}
+	form := mixedProtocolForm("多协议订阅", "1")
+	names := form["node_name"]
 	if save := authRequest(router, http.MethodPost, path, form, cookie); save.Code != http.StatusSeeOther {
 		t.Fatalf("save mixed protocol draft returned %d", save.Code)
 	}
@@ -102,6 +75,39 @@ func TestMixedProtocolDraftAndPreview(t *testing.T) {
 		}
 	}
 	verifyMihomoYAML(t, output)
+}
+
+func mixedProtocolForm(name, version string) url.Values {
+	names := []string{
+		"Shadowsocks", "VMess TCP", "VMess TCP TLS", "VMess WS", "VMess WS TLS",
+		"VLESS TCP", "VLESS TCP TLS", "VLESS WS", "VLESS WS TLS", "VLESS REALITY", "VLESS Vision",
+		"Trojan TCP", "Trojan WS",
+	}
+	form := url.Values{
+		"name": {name}, "version": {version}, "node_name": names,
+		"node_type":             {"ss", "vmess", "vmess", "vmess", "vmess", "vless", "vless", "vless", "vless", "vless", "vless", "trojan", "trojan"},
+		"node_network":          {"", "tcp", "tcp", "ws", "ws", "tcp", "tcp", "ws", "ws", "tcp", "tcp", "tcp", "ws"},
+		"node_security":         {"", "", "tls", "", "tls", "", "tls", "", "tls", "reality", "reality", "", ""},
+		"node_sni":              {"", "", "vmess.example.test", "", "", "", "", "", "", "cover.example.test", "cover.example.test", "trojan.example.test", ""},
+		"node_password":         {"fictional-ss", "", "", "", "", "", "", "", "", "", "", "fictional-trojan", "fictional-trojan-ws"},
+		"node_cipher":           {"aes-128-gcm", "", "", "", "", "", "", "", "", "", "", "", ""},
+		"node_ws_path":          {"", "", "", "/data", "/vmess", "", "", "", "/vless?lane=1", "", "", "", "/trojan"},
+		"node_ws_host":          {"", "", "", "", "front.example.test:8443", "", "", "", "", "", "", "", "trojan-ws.example.test"},
+		"node_alter_id":         {"", "", "", "16", "0", "", "", "", "", "", "", "", ""},
+		"node_vmess_cipher":     {"", "", "", "aes-128-gcm", "", "", "", "", "", "", "", "", ""},
+		"node_reality_key":      {"", "", "", "", "", "", "", "", "", fixturePublicKey, fixturePublicKey, "", ""},
+		"node_reality_short_id": {"", "", "", "", "", "", "", "", "", "", "0123abcd", "", ""},
+		"node_flow":             {"", "", "", "", "", "", "", "", "", "", "xtls-rprx-vision", "", ""},
+	}
+	for index, nodeType := range form["node_type"] {
+		form.Add("node_server", "192.0.2.10")
+		form.Add("node_port", "443")
+		form.Add("node_uuid", "")
+		if nodeType == "vmess" || nodeType == "vless" {
+			form["node_uuid"][index] = fixtureUUID
+		}
+	}
+	return form
 }
 
 func TestProtocolPreviewValidatesModeSpecificFields(t *testing.T) {

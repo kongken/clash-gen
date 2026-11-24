@@ -1,6 +1,10 @@
 package http
 
 import (
+	"context"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"net/http"
 	"net/url"
 	"strings"
@@ -118,5 +122,60 @@ func TestDeleteRevokesLinksAndCleansUpAfterStorageRecovers(t *testing.T) {
 	if response := authRequest(restarted, http.MethodGet, otherLink.RequestURI(), nil, nil); response.Code != http.StatusOK ||
 		!strings.Contains(response.Body.String(), "保留节点") {
 		t.Fatalf("cleanup interfered with another subscription: %d", response.Code)
+	}
+}
+
+func TestDeleteRemovesVersionsFromVersionedBucket(t *testing.T) {
+	fixture := newPublicationFixture(t)
+	cfg := fixture.s3Config
+	client := publicationS3Client(cfg)
+	bucket := aws.String(cfg.Bucket)
+
+	versioning, err := client.GetBucketVersioning(t.Context(), &s3.GetBucketVersioningInput{Bucket: bucket})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if versioning.Status != types.BucketVersioningStatusEnabled {
+		t.Skip("set CLASH_GEN_TEST_S3_BUCKET to a disposable versioning-enabled MinIO bucket to test physical version deletion")
+	}
+
+	router, publisher := fixture.router(t)
+	cookie, editor := publicationEditor(t, router, "版本清理验收")
+	form := publicationForm("版本清理验收", "已发布节点", "1")
+	if response := authRequest(router, http.MethodPost, editor+"/publish", form, cookie); response.Code != http.StatusSeeOther {
+		t.Fatalf("publish returned %d", response.Code)
+	}
+
+	input := &s3.ListObjectVersionsInput{Bucket: bucket, Prefix: aws.String(cfg.Prefix + "/")}
+	before, err := client.ListObjectVersions(t.Context(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before.Versions) != 1 || aws.ToString(before.Versions[0].VersionId) == "" {
+		t.Fatal("MinIO did not return one uploaded version")
+	}
+
+	response := authRequest(router, http.MethodPost, editor+"/delete", url.Values{"confirm": {"1"}}, cookie)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("confirmed delete returned %d", response.Code)
+	}
+
+	stopCleanup := runCleanupForTest(t, publisher)
+	defer stopCleanup()
+	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
+	defer cancel()
+	for {
+		remaining, err := client.ListObjectVersions(ctx, input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(remaining.Versions) == 0 && len(remaining.DeleteMarkers) == 0 {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("cleanup left %d object versions and %d markers", len(remaining.Versions), len(remaining.DeleteMarkers))
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 }

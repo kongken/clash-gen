@@ -84,7 +84,9 @@ func TestAdminSessionExpiresOrRejectsChangedToken(t *testing.T) {
 	cookie := login.Result().Cookies()[0]
 
 	rotated := gin.New()
-	RegisterRoutes(rotated, PanelOptions{AdminToken: "rotated-admin-token", Redis: client})
+	if err := RegisterRoutes(rotated, PanelOptions{AdminToken: "rotated-admin-token", Redis: client}); err != nil {
+		t.Fatal(err)
+	}
 	if page := authRequest(rotated, http.MethodGet, "/admin", nil, cookie); page.Code != http.StatusSeeOther {
 		t.Fatalf("old cookie after changing the deployment token = %d", page.Code)
 	}
@@ -92,8 +94,32 @@ func TestAdminSessionExpiresOrRejectsChangedToken(t *testing.T) {
 		t.Fatalf("old token after changing the deployment token = %d", login.Code)
 	}
 
-	server.FastForward(24*time.Hour + time.Second)
 	if page := authRequest(r, http.MethodGet, "/admin", nil, cookie); page.Code != http.StatusSeeOther {
+		t.Fatalf("old process still accepted the old session after token rotation: %d", page.Code)
+	}
+
+	rolledBack := gin.New()
+	if err := RegisterRoutes(rolledBack, PanelOptions{AdminToken: "test-admin-token", Redis: client}); err != nil {
+		t.Fatal(err)
+	}
+	if page := authRequest(rolledBack, http.MethodGet, "/admin", nil, cookie); page.Code != http.StatusSeeOther {
+		t.Fatalf("old cookie revived after restoring the deployment token: %d", page.Code)
+	}
+	login = authRequest(rolledBack, http.MethodPost, "/login", token, nil)
+	if login.Code != http.StatusSeeOther || len(login.Result().Cookies()) != 1 {
+		t.Fatalf("login with restored token returned %d", login.Code)
+	}
+	cookie = login.Result().Cookies()[0]
+	restarted := gin.New()
+	if err := RegisterRoutes(restarted, PanelOptions{AdminToken: "test-admin-token", Redis: client}); err != nil {
+		t.Fatal(err)
+	}
+	if page := authRequest(restarted, http.MethodGet, "/admin", nil, cookie); page.Code != http.StatusOK {
+		t.Fatalf("current session did not survive a restart with the same token: %d", page.Code)
+	}
+
+	server.FastForward(24*time.Hour + time.Second)
+	if page := authRequest(restarted, http.MethodGet, "/admin", nil, cookie); page.Code != http.StatusSeeOther {
 		t.Fatalf("replayed expired cookie = %d", page.Code)
 	}
 }
@@ -104,7 +130,9 @@ func newAuthRouter(t *testing.T) (*gin.Engine, *miniredis.Miniredis, *redis.Clie
 	client := redis.NewClient(&redis.Options{Addr: server.Addr()})
 	t.Cleanup(func() { _ = client.Close() })
 	r := gin.New()
-	RegisterRoutes(r, PanelOptions{AdminToken: "test-admin-token", Redis: client, SecureCookie: true})
+	if err := RegisterRoutes(r, PanelOptions{AdminToken: "test-admin-token", Redis: client, SecureCookie: true}); err != nil {
+		t.Fatal(err)
+	}
 	return r, server, client
 }
 

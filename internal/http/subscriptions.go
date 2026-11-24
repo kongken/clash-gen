@@ -63,6 +63,8 @@ func registerSubscriptions(r *gin.Engine, admin *gin.RouterGroup, options PanelO
 		admin.POST("/subscriptions/:id/publish", panel.publish)
 		admin.POST("/subscriptions/:id/reset-link", panel.resetLink)
 		r.GET("/subscription/:id", sensitiveRequest, panel.download)
+		// Gin's automatic slash redirect logs the URI before middleware.
+		r.GET("/subscription/:id/", sensitiveRequest, panel.download)
 	}
 }
 

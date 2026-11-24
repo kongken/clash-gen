@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -17,8 +18,9 @@ import (
 )
 
 const (
-	adminCookie = "clash_gen_session"
-	sessionTTL  = 24 * time.Hour
+	adminCookie        = "clash_gen_session"
+	sessionTTL         = 24 * time.Hour
+	adminCredentialKey = "clash-gen:{admin}:credential"
 )
 
 //go:embed templates/login.html
@@ -28,16 +30,37 @@ var loginTemplate = template.Must(template.New("login").Parse(loginHTML))
 
 type adminAuth struct {
 	tokenDigest  string
+	generation   string
 	redis        redis.UniversalClient
 	secureCookie bool
 }
 
-func registerAdminAuth(r *gin.Engine, options PanelOptions) {
+// A different configured token rotates the generation atomically. Returning to
+// a prior token therefore creates a new generation for that token as well.
+var configureAdminCredential = redis.NewScript(`
+local current = redis.call("GET", KEYS[1])
+local prefix = ARGV[1] .. ":"
+if current and string.sub(current, 1, string.len(prefix)) == prefix then
+    return current
+end
+local replacement = prefix .. ARGV[2]
+redis.call("SET", KEYS[1], replacement)
+return replacement
+`)
+
+func registerAdminAuth(r *gin.Engine, options PanelOptions) error {
 	auth := &adminAuth{
 		tokenDigest:  authDigest(options.AdminToken),
 		redis:        options.Redis,
 		secureCookie: options.SecureCookie,
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	generation, err := configureAdminCredential.Run(ctx, auth.redis, []string{adminCredentialKey}, auth.tokenDigest, rand.Text()).Text()
+	if err != nil {
+		return errors.New("could not initialize administrator session state in Redis")
+	}
+	auth.generation = generation
 
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusSeeOther, "/admin")
@@ -49,6 +72,7 @@ func registerAdminAuth(r *gin.Engine, options PanelOptions) {
 	admin := r.Group("/admin", sensitiveRequest, requireSameOrigin, auth.requireSession)
 	admin.POST("/logout", auth.logout)
 	registerSubscriptions(r, admin, options)
+	return nil
 }
 
 func sensitiveRequest(c *gin.Context) {
@@ -92,8 +116,14 @@ func (a *adminAuth) login(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
+	active, err := a.redis.Get(ctx, adminCredentialKey).Result()
+	if err != nil || active != a.generation {
+		renderLogin(c, http.StatusServiceUnavailable, "暂时无法登录，请重试")
+		return
+	}
 	session := rand.Text()
-	if err := a.redis.Set(c.Request.Context(), authSessionKey(session), a.tokenDigest, sessionTTL).Err(); err != nil {
+	if err := a.redis.Set(ctx, authSessionKey(session), a.generation, sessionTTL).Err(); err != nil {
 		renderLogin(c, http.StatusServiceUnavailable, "暂时无法登录，请重试")
 		return
 	}
@@ -108,12 +138,12 @@ func (a *adminAuth) requireSession(c *gin.Context) {
 		requireLogin(c)
 		return
 	}
-	digest, err := a.redis.Get(c.Request.Context(), authSessionKey(session)).Result()
-	if err != nil && !errors.Is(err, redis.Nil) {
+	values, err := a.redis.MGet(c.Request.Context(), authSessionKey(session), adminCredentialKey).Result()
+	if err != nil {
 		c.AbortWithStatus(http.StatusServiceUnavailable)
 		return
 	}
-	if subtle.ConstantTimeCompare([]byte(digest), []byte(a.tokenDigest)) != 1 {
+	if values[0] != a.generation || values[1] != a.generation {
 		requireLogin(c)
 		return
 	}
@@ -158,5 +188,5 @@ func authDigest(token string) string {
 }
 
 func authSessionKey(session string) string {
-	return "clash-gen:admin-session:" + authDigest(session)
+	return "clash-gen:{admin}:session:" + authDigest(session)
 }
