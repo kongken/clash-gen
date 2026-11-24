@@ -19,7 +19,10 @@ const (
 	retiredGrace  = 30 * time.Second
 )
 
-var ErrUploadFailed = errors.New("subscription upload failed")
+var (
+	ErrUploadFailed = errors.New("subscription upload failed")
+	ErrNotPublished = errors.New("subscription is not published")
+)
 
 // Publication identifies the immutable YAML currently available to clients.
 type Publication struct {
@@ -88,6 +91,21 @@ func (p *Publisher) Download(ctx context.Context, id, token string) (io.ReadClos
 		return nil, 0, ErrNotFound
 	}
 	return p.objects.get(ctx, sub.Publication.ObjectKey)
+}
+
+// ResetDownloadToken revokes the current link while keeping its publication.
+func (s *Store) ResetDownloadToken(ctx context.Context, id string) error {
+	return s.watch(ctx, []string{subscriptionKey(id)}, func(tx *redis.Tx) error {
+		sub, err := readSubscription(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+		if sub.Publication == nil {
+			return ErrNotPublished
+		}
+		sub.DownloadToken = rand.Text()
+		return writeSubscription(ctx, tx, sub, nil)
+	})
 }
 
 func (s *Store) stagePublication(ctx context.Context, id, objectKey string, version uint64, draft Draft) (Publication, error) {

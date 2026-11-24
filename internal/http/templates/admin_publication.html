@@ -9,7 +9,11 @@
     <label for="download-link">下载地址</label>
     <input id="download-link" value="{{.DownloadLink}}" type="url" readonly>
     <button type="button" id="copy-download-link">复制链接</button>
+    <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}/reset-link">
+      <button type="submit" aria-describedby="reset-link-notice">重设链接</button>
+    </form>
   </div>
   <p id="copy-feedback" role="status" hidden></p>
+  <p id="reset-link-notice">重设后，旧链接将立即失效。</p>
 </section>
 {{end}}

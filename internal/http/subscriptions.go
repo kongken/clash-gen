@@ -59,6 +59,7 @@ func registerSubscriptions(r *gin.Engine, admin *gin.RouterGroup, options PanelO
 	admin.POST("/subscriptions/:id/preview", panel.preview)
 	if panel.canPublish() {
 		admin.POST("/subscriptions/:id/publish", panel.publish)
+		admin.POST("/subscriptions/:id/reset-link", panel.resetLink)
 		r.GET("/subscription/:id", sensitiveRequest, panel.download)
 	}
 }
@@ -102,6 +103,8 @@ func (p *adminPanel) edit(c *gin.Context) {
 		notice = "草稿已保存。"
 	case c.Query("published") == "1":
 		notice = "订阅已发布。"
+	case c.Query("link-reset") == "1":
+		notice = "订阅链接已重设，旧链接已失效。"
 	}
 	p.renderEdit(c, http.StatusOK, "", notice)
 }
