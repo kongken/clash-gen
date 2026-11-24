@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>删除订阅 · Clash 订阅管理</title>
+  <link rel="stylesheet" href="/assets/panel.css">
+</head>
+<body>
+  {{template "admin_header"}}
+  <main class="panel-container">
+    <section class="panel-section" aria-labelledby="delete-heading">
+      <h1 id="delete-heading">删除订阅</h1>
+      <p>确定删除「{{.Name}}」吗？{{if .Published}}现有下载链接将立即失效。{{end}}</p>
+      {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+      <form class="form-actions" method="post" action="{{.EditorPath}}/delete">
+        <a class="button" href="{{.EditorPath}}">取消</a>
+        <button class="button-danger" type="submit" name="confirm" value="1">确认删除</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

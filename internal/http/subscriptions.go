@@ -57,6 +57,8 @@ func registerSubscriptions(r *gin.Engine, admin *gin.RouterGroup, options PanelO
 	admin.GET("/subscriptions/:id", panel.edit)
 	admin.POST("/subscriptions/:id", panel.save)
 	admin.POST("/subscriptions/:id/preview", panel.preview)
+	admin.GET("/subscriptions/:id/delete", panel.confirmDelete)
+	admin.POST("/subscriptions/:id/delete", panel.deleteSubscription)
 	if panel.canPublish() {
 		admin.POST("/subscriptions/:id/publish", panel.publish)
 		admin.POST("/subscriptions/:id/reset-link", panel.resetLink)
