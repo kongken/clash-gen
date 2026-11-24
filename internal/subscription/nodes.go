@@ -14,12 +14,23 @@ import (
 
 // Node keeps the entered values, including incomplete port and credential fields.
 type Node struct {
-	Type     string `json:"type"`
-	Name     string `json:"name"`
-	Server   string `json:"server"`
-	Port     string `json:"port"`
-	Cipher   string `json:"cipher"`
-	Password string `json:"password"`
+	Type           string `json:"type"`
+	Name           string `json:"name"`
+	Server         string `json:"server"`
+	Port           string `json:"port"`
+	Cipher         string `json:"cipher"`
+	Password       string `json:"password"`
+	Network        string `json:"network,omitempty"`
+	Security       string `json:"security,omitempty"`
+	UUID           string `json:"uuid,omitempty"`
+	AlterID        string `json:"alter_id,omitempty"`
+	VMessCipher    string `json:"vmess_cipher,omitempty"`
+	ServerName     string `json:"server_name,omitempty"`
+	WSPath         string `json:"ws_path,omitempty"`
+	WSHost         string `json:"ws_host,omitempty"`
+	RealityKey     string `json:"reality_key,omitempty"`
+	RealityShortID string `json:"reality_short_id,omitempty"`
+	Flow           string `json:"flow,omitempty"`
 }
 
 func ShadowsocksCiphers() []string {
@@ -59,6 +70,10 @@ func (n Node) proxy() (map[string]any, error) {
 		}
 		proxy["cipher"] = n.Cipher
 		proxy["password"] = n.Password
+	case "vmess", "vless", "trojan":
+		if err := n.addTunnelOptions(proxy); err != nil {
+			return nil, err
+		}
 	default:
 		return nil, errors.New("请选择支持的节点协议。")
 	}
