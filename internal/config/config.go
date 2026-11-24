@@ -9,12 +9,10 @@ type ServiceConfig struct {
 	Environment string `yaml:"environment"`
 	BaseURL     string `yaml:"base_url"`
 	AdminToken  string `yaml:"admin_token"`
+	RedisURL    string `yaml:"redis_url"`
 }
 
 // Print logs the loaded configuration; required by the butterfly AppConfig interface.
 func (c *ServiceConfig) Print() {
-	slog.Info("service config loaded",
-		"environment", c.Environment,
-		"base_url", c.BaseURL,
-	)
+	slog.Info("service config loaded", "environment", c.Environment)
 }
