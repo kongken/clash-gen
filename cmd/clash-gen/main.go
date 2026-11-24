@@ -11,10 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kongken/clash-gen/internal/config"
 	apihttp "github.com/kongken/clash-gen/internal/http"
+	"github.com/kongken/clash-gen/internal/subscription"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
+	ctx, stopCleanup := context.WithCancel(context.Background())
+	defer stopCleanup()
 	svcConfig := &config.ServiceConfig{}
 	var panel apihttp.PanelOptions
 
@@ -28,9 +31,12 @@ func main() {
 		InitFunc: []func() error{
 			func() error {
 				var err error
-				panel, err = initPanel(svcConfig)
+				panel, err = initPanel(ctx, svcConfig)
 				if err != nil {
 					return err
+				}
+				if panel.Publisher != nil {
+					go panel.Publisher.RunCleanup(ctx)
 				}
 				slog.Info("clash-gen ready", "environment", svcConfig.Environment)
 				return nil
@@ -39,12 +45,13 @@ func main() {
 	}
 
 	app.New(appConfig).Run()
+	stopCleanup()
 	if panel.Redis != nil {
 		_ = panel.Redis.Close()
 	}
 }
 
-func initPanel(cfg *config.ServiceConfig) (apihttp.PanelOptions, error) {
+func initPanel(ctx context.Context, cfg *config.ServiceConfig) (apihttp.PanelOptions, error) {
 	if cfg.AdminToken == "" {
 		return apihttp.PanelOptions{}, nil
 	}
@@ -58,8 +65,12 @@ func initPanel(cfg *config.ServiceConfig) (apihttp.PanelOptions, error) {
 	if err != nil {
 		return apihttp.PanelOptions{}, errors.New("redis_url must be a valid Redis connection URL")
 	}
+	objects, err := subscription.NewS3Objects(cfg.ObjectStore)
+	if err != nil {
+		return apihttp.PanelOptions{}, err
+	}
 	client := redis.NewClient(redisOptions)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	if err := client.Ping(ctx).Err(); err != nil {
 		_ = client.Close()
@@ -69,5 +80,7 @@ func initPanel(cfg *config.ServiceConfig) (apihttp.PanelOptions, error) {
 		AdminToken:   cfg.AdminToken,
 		Redis:        client,
 		SecureCookie: baseURL.Scheme == "https",
+		BaseURL:      baseURL,
+		Publisher:    subscription.NewPublisher(subscription.NewStore(client), objects),
 	}, nil
 }
