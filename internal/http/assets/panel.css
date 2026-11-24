@@ -1,0 +1,79 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #152925;
+  background: #f2f5f3;
+  line-height: 1.55;
+  --muted: #566861;
+  --border: #d4dfd9;
+  --primary: #14654e;
+  --primary-hover: #0c4d3a;
+  --paper: #fff;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+a { color: var(--primary); text-underline-offset: 0.2em; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(155deg, #e0eee6, #f7f8f6 65%);
+}
+
+.auth-card {
+  width: min(100%, 28rem);
+  padding: clamp(1.5rem, 6vw, 2.5rem);
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 16px 48px rgb(21 41 37 / 8%);
+}
+
+.auth-card h1 { margin-top: 0; }
+.auth-card form { display: grid; gap: 0.75rem; }
+.auth-card input, .auth-card button { width: 100%; }
+
+label { font-weight: 600; }
+input:not([type=checkbox], [type=radio], [type=hidden]), select, textarea {
+  max-width: 100%;
+  color: inherit;
+  background: var(--paper);
+  border: 1px solid #afc1b7;
+  border-radius: 0.4rem;
+  padding: 0.48rem 0.65rem;
+}
+
+button, .button {
+  display: inline-block;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #afc1b7;
+  border-radius: 0.4rem;
+  background: var(--paper);
+  color: #152925;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+button:hover, .button:hover { background: #eaf0ed; }
+button:disabled { cursor: default; opacity: 0.55; }
+.button-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.button-primary:hover { background: var(--primary-hover); }
+.button-danger { color: #982e29; border-color: #e4b5b0; }
+.button-danger:hover { background: #fcebe9; }
+:focus-visible { outline: 3px solid #218763; outline-offset: 3px; }
+
+.form-error, .form-notice {
+  border-radius: 0.45rem;
+  margin-block: 0.75rem;
+  padding: 0.55rem 0.75rem;
+}
+
+.form-error { background: #fae9e7; color: #84231e; }
+.form-notice { background: #e3f1e8; color: #224f3b; }
+[hidden] { display: none !important; }
