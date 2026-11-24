@@ -1,0 +1,36 @@
+{{define "admin_nodes"}}
+<section class="panel-section" data-draft-rows>
+  <h2>代理节点</h2>
+  <div data-row-list>
+    {{range .}}{{template "admin_node_row" .}}{{end}}
+  </div>
+  <template data-row-template>{{template "admin_node_row" emptyNode}}</template>
+  <button type="button" data-row-action="add">添加节点</button>
+</section>
+{{end}}
+
+{{define "admin_node_row"}}
+<fieldset class="draft-row" data-row>
+  <legend>节点 <span data-row-number></span></legend>
+  <input type="hidden" name="node_type" value="{{.Type}}">
+  <div class="form-row">
+    <label>名称 <input name="node_name" value="{{.Name}}"></label>
+    <label>服务器 <input name="node_server" value="{{.Server}}" autocapitalize="off" spellcheck="false"></label>
+    <label>端口 <input name="node_port" value="{{.Port}}" inputmode="numeric"></label>
+    <label>加密方式
+      <select name="node_cipher">
+        <option value="">请选择</option>
+        {{range $cipher := shadowsocksCiphers}}
+        <option value="{{$cipher}}"{{if eq $.Cipher $cipher}} selected{{end}}>{{$cipher}}</option>
+        {{end}}
+      </select>
+    </label>
+    <label>密码 <input name="node_password" value="{{.Password}}" type="password" autocomplete="off"></label>
+  </div>
+  <div class="form-actions">
+    <button type="button" data-row-action="up">上移</button>
+    <button type="button" data-row-action="down">下移</button>
+    <button class="button-danger" type="button" data-row-action="remove">移除节点</button>
+  </div>
+</fieldset>
+{{end}}

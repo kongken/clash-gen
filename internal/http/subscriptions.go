@@ -6,7 +6,6 @@ import (
 	"errors"
 	"html/template"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kongken/clash-gen/internal/subscription"
@@ -15,7 +14,10 @@ import (
 //go:embed templates/admin_*.html
 var adminHTML embed.FS
 
-var adminTemplates = template.Must(template.ParseFS(adminHTML, "templates/admin_*.html"))
+var adminTemplates = template.Must(template.New("admin").Funcs(template.FuncMap{
+	"shadowsocksCiphers": subscription.ShadowsocksCiphers,
+	"emptyNode":          func() subscription.Node { return subscription.Node{Type: "ss"} },
+}).ParseFS(adminHTML, "templates/admin_*.html"))
 
 type adminPanel struct {
 	store *subscription.Store
@@ -29,6 +31,9 @@ type listPage struct {
 
 type editPage struct {
 	Subscription subscription.Subscription
+	Draft        subscription.Draft
+	Version      uint64
+	Preview      string
 	Error        string
 	Notice       string
 }
@@ -39,6 +44,7 @@ func registerSubscriptions(admin *gin.RouterGroup, store *subscription.Store) {
 	admin.POST("/subscriptions", panel.create)
 	admin.GET("/subscriptions/:id", panel.edit)
 	admin.POST("/subscriptions/:id", panel.save)
+	admin.POST("/subscriptions/:id/preview", panel.preview)
 }
 
 func (p *adminPanel) list(c *gin.Context) {
@@ -80,31 +86,47 @@ func (p *adminPanel) edit(c *gin.Context) {
 }
 
 func (p *adminPanel) save(c *gin.Context) {
-	if err := parseDraftForm(c); err != nil {
-		p.renderEdit(c, http.StatusBadRequest, "保存请求无效。", "")
-		return
-	}
-	version, err := strconv.ParseUint(c.Request.PostForm.Get("version"), 10, 64)
-	if err != nil || version == 0 {
-		p.renderEdit(c, http.StatusBadRequest, "草稿版本无效，请刷新后重试。", "")
+	version, draft, err := readDraftPost(c)
+	if err != nil {
+		p.renderEdit(c, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 	id := c.Param("id")
-	draft := subscription.Draft{Name: c.Request.PostForm.Get("name")}
 	err = p.store.SaveDraft(c.Request.Context(), id, version, draft)
 	switch {
 	case errors.Is(err, subscription.ErrName):
-		p.renderEdit(c, http.StatusUnprocessableEntity, "请输入 1 至 120 个字符的订阅名称。", "")
+		p.renderEditPage(c, http.StatusUnprocessableEntity, editPage{Version: version, Draft: draft, Error: "请输入 1 至 120 个字符的订阅名称。"})
 	case errors.Is(err, subscription.ErrConflict):
 		p.renderEdit(c, http.StatusConflict, "草稿已在其他请求中修改。已显示最新版本，请重新编辑。", "")
 	case err != nil:
-		p.renderEdit(c, http.StatusServiceUnavailable, "暂时无法保存草稿，请重试。", "")
+		p.renderEditPage(c, http.StatusServiceUnavailable, editPage{Version: version, Draft: draft, Error: "暂时无法保存草稿，请重试。"})
 	default:
 		c.Redirect(http.StatusSeeOther, subscriptionPath(id)+"?saved=1")
 	}
 }
 
+func (p *adminPanel) preview(c *gin.Context) {
+	version, draft, err := readDraftPost(c)
+	if err != nil {
+		p.renderEdit(c, http.StatusBadRequest, err.Error(), "")
+		return
+	}
+	page := editPage{Draft: draft, Version: version}
+	output, err := subscription.GenerateYAML(draft)
+	if err != nil {
+		page.Error = err.Error()
+		p.renderEditPage(c, http.StatusUnprocessableEntity, page)
+		return
+	}
+	page.Preview = string(output)
+	p.renderEditPage(c, http.StatusOK, page)
+}
+
 func (p *adminPanel) renderEdit(c *gin.Context, status int, message, notice string) {
+	p.renderEditPage(c, status, editPage{Error: message, Notice: notice})
+}
+
+func (p *adminPanel) renderEditPage(c *gin.Context, status int, page editPage) {
 	sub, err := p.store.Get(c.Request.Context(), c.Param("id"))
 	switch {
 	case errors.Is(err, subscription.ErrNotFound):
@@ -112,13 +134,13 @@ func (p *adminPanel) renderEdit(c *gin.Context, status int, message, notice stri
 	case err != nil:
 		c.String(http.StatusServiceUnavailable, "暂时无法读取草稿，请重试。")
 	default:
-		renderPanel(c, status, "admin_edit.html", editPage{Subscription: sub, Error: message, Notice: notice})
+		page.Subscription = sub
+		if page.Version == 0 {
+			page.Draft = sub.Draft
+			page.Version = sub.DraftVersion
+		}
+		renderPanel(c, status, "admin_edit.html", page)
 	}
-}
-
-func parseDraftForm(c *gin.Context) error {
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 1<<20)
-	return c.Request.ParseForm()
 }
 
 func renderPanel(c *gin.Context, status int, name string, data any) {
