@@ -26,6 +26,8 @@
         </div>
       </section>
       {{template "admin_nodes" .Draft.Nodes}}
+      {{template "admin_rules" .Draft}}
+      {{template "admin_settings" .Draft.Settings}}
       <div class="form-actions">
         <button class="button-primary" type="submit">保存草稿</button>
         <button type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/preview">预览 YAML</button>

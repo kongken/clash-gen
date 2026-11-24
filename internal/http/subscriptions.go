@@ -19,6 +19,7 @@ var adminHTML embed.FS
 var adminTemplates = template.Must(template.New("admin").Funcs(template.FuncMap{
 	"shadowsocksCiphers": subscription.ShadowsocksCiphers,
 	"formatPublishedAt":  func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04:05 UTC") },
+	"vmessCiphers":       subscription.VMessCiphers,
 	"emptyNode":          func() subscription.Node { return subscription.Node{Type: "ss"} },
 }).ParseFS(adminHTML, "templates/admin_*.html"))
 

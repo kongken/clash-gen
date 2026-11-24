@@ -1,0 +1,22 @@
+{{define "admin_settings"}}
+<section class="panel-section">
+  <h2>基础设置</h2>
+  <div class="form-row">
+    <label>mixed-port
+      <input name="mixed_port" value="{{.MixedPort}}" placeholder="7890" inputmode="numeric">
+    </label>
+    <label>日志级别
+      <select name="log_level">
+        <option value=""{{if eq .LogLevel "info"}} selected{{end}}>info（默认）</option>
+        <option value="silent"{{if eq .LogLevel "silent"}} selected{{end}}>silent</option>
+        <option value="error"{{if eq .LogLevel "error"}} selected{{end}}>error</option>
+        <option value="warning"{{if eq .LogLevel "warning"}} selected{{end}}>warning</option>
+        <option value="debug"{{if eq .LogLevel "debug"}} selected{{end}}>debug</option>
+      </select>
+    </label>
+  </div>
+  <p><label><input type="checkbox" name="dns_enabled" value="1"{{if .DNSEnabled}} checked{{end}}> 启用 DNS</label></p>
+  <label for="dns-upstreams">DNS 上游地址（每行一个）</label>
+  <div><textarea id="dns-upstreams" name="dns_upstreams" rows="3" cols="36" spellcheck="false">{{.DNSUpstreams}}</textarea></div>
+</section>
+{{end}}

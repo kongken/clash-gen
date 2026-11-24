@@ -1,0 +1,47 @@
+{{define "admin_rules"}}
+<section class="panel-section" data-draft-rows>
+  <h2>分流规则</h2>
+  <div data-row-list>
+    {{range .Rules}}{{template "admin_rule_row" .}}{{end}}
+  </div>
+  <template data-row-template>{{template "admin_rule_row"}}</template>
+  <div class="form-actions">
+    <button type="button" data-row-action="add">添加规则</button>
+  </div>
+  <div class="form-row">
+    <label>MATCH 去向
+      <select name="match_target">{{template "admin_rule_targets" .MatchTarget}}</select>
+    </label>
+  </div>
+</section>
+{{end}}
+
+{{define "admin_rule_row"}}
+<fieldset class="draft-row" data-row>
+  <legend>规则 <span data-row-number></span></legend>
+  <div class="form-row">
+    <label>类型
+      <select name="rule_type">
+        <option value="DOMAIN"{{if eq .Type "DOMAIN"}} selected{{end}}>域名</option>
+        <option value="DOMAIN-SUFFIX"{{if eq .Type "DOMAIN-SUFFIX"}} selected{{end}}>域名后缀</option>
+        <option value="IP-CIDR"{{if eq .Type "IP-CIDR"}} selected{{end}}>IP 网段</option>
+      </select>
+    </label>
+    <label>匹配值 <input name="rule_value" value="{{.Value}}" autocapitalize="off" spellcheck="false"></label>
+    <label>去向
+      <select name="rule_target">{{template "admin_rule_targets" .Target}}</select>
+    </label>
+  </div>
+  <div class="form-actions">
+    <button type="button" data-row-action="up">上移</button>
+    <button type="button" data-row-action="down">下移</button>
+    <button class="button-danger" type="button" data-row-action="remove">移除规则</button>
+  </div>
+</fieldset>
+{{end}}
+
+{{define "admin_rule_targets"}}
+  <option value="PROXY"{{if eq . "PROXY"}} selected{{end}}>PROXY</option>
+  <option value="DIRECT"{{if eq . "DIRECT"}} selected{{end}}>DIRECT</option>
+  <option value="REJECT"{{if eq . "REJECT"}} selected{{end}}>REJECT</option>
+{{end}}
