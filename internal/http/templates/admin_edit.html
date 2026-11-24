@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Subscription.Draft.Name}} · Clash 订阅管理</title>
+  <link rel="stylesheet" href="/assets/panel.css">
+</head>
+<body>
+  {{template "admin_header"}}
+  <main class="panel-container">
+    <p><a href="/admin">返回订阅列表</a></p>
+    <h1>编辑订阅</h1>
+    <p class="status-label">未发布</p>
+    {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+    {{if .Notice}}<p class="form-notice" role="status">{{.Notice}}</p>{{end}}
+    <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}">
+      <input type="hidden" name="version" value="{{.Subscription.DraftVersion}}">
+      <section class="panel-section">
+        <div class="form-row">
+          <label for="edit-name">订阅名称</label>
+          <input id="edit-name" name="name" value="{{.Subscription.Draft.Name}}" maxlength="120" required>
+        </div>
+      </section>
+      <div class="form-actions">
+        <button class="button-primary" type="submit">保存草稿</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>
