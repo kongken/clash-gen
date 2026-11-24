@@ -10,14 +10,27 @@
 {{end}}
 
 {{define "admin_node_row"}}
+{{$ss := or (eq .Type "") (eq .Type "ss")}}
+{{$uuid := or (eq .Type "vmess") (eq .Type "vless")}}
+{{$trojan := eq .Type "trojan"}}
+{{$ws := and (not $ss) (eq .Network "ws")}}
+{{$allowsReality := and (eq .Type "vless") (not $ws)}}
+{{$reality := and $allowsReality (eq .Security "reality")}}
 <fieldset class="draft-row" data-row>
   <legend>节点 <span data-row-number></span></legend>
-  <input type="hidden" name="node_type" value="{{.Type}}">
   <div class="form-row">
     <label>名称 <input name="node_name" value="{{.Name}}"></label>
+    <label>协议
+      <select name="node_type">
+        <option value="ss"{{if $ss}} selected{{end}}>Shadowsocks</option>
+        <option value="vmess"{{if eq .Type "vmess"}} selected{{end}}>VMess</option>
+        <option value="vless"{{if eq .Type "vless"}} selected{{end}}>VLESS</option>
+        <option value="trojan"{{if $trojan}} selected{{end}}>Trojan</option>
+      </select>
+    </label>
     <label>服务器 <input name="node_server" value="{{.Server}}" autocapitalize="off" spellcheck="false"></label>
     <label>端口 <input name="node_port" value="{{.Port}}" inputmode="numeric"></label>
-    <label>加密方式
+    <label data-node-protocols="ss"{{if not $ss}} hidden{{end}}>加密方式
       <select name="node_cipher">
         <option value="">请选择</option>
         {{range $cipher := shadowsocksCiphers}}
@@ -25,7 +38,57 @@
         {{end}}
       </select>
     </label>
-    <label>密码 <input name="node_password" value="{{.Password}}" type="password" autocomplete="off"></label>
+    <label data-node-protocols="ss trojan"{{if not (or $ss $trojan)}} hidden{{end}}>密码
+      <input name="node_password" value="{{.Password}}" type="password" autocomplete="off">
+    </label>
+    <label data-node-protocols="vmess vless"{{if not $uuid}} hidden{{end}}>UUID
+      <input name="node_uuid" value="{{.UUID}}" autocapitalize="off" spellcheck="false" autocomplete="off">
+    </label>
+    <label data-node-protocols="vmess"{{if ne .Type "vmess"}} hidden{{end}}>VMess Alter ID
+      <input name="node_alter_id" value="{{.AlterID}}" placeholder="0" inputmode="numeric">
+    </label>
+    <label data-node-protocols="vmess"{{if ne .Type "vmess"}} hidden{{end}}>VMess 加密方式
+      <select name="node_vmess_cipher">
+        {{range $cipher := vmessCiphers}}
+        <option value="{{$cipher}}"{{if eq $.VMessCipher $cipher}} selected{{end}}>{{$cipher}}</option>
+        {{end}}
+      </select>
+    </label>
+    <label data-node-protocols="vmess vless trojan"{{if $ss}} hidden{{end}}>传输方式
+      <select name="node_network">
+        <option value="tcp"{{if not $ws}} selected{{end}}>TCP</option>
+        <option value="ws"{{if $ws}} selected{{end}}>WebSocket</option>
+      </select>
+    </label>
+    <label data-node-protocols="vmess vless"{{if not $uuid}} hidden{{end}}>传输安全
+      <select name="node_security">
+        <option value="">关闭</option>
+        <option value="tls"{{if eq .Security "tls"}} selected{{end}}>TLS</option>
+        <option value="reality"{{if not $allowsReality}} hidden disabled{{end}}{{if $reality}} selected{{end}}>REALITY</option>
+      </select>
+    </label>
+    <p data-node-protocols="trojan"{{if not $trojan}} hidden{{end}}>Trojan 始终使用 TLS。</p>
+    <label data-node-feature="tls"{{if not (or $trojan (and $uuid .Security))}} hidden{{end}}>SNI
+      <input name="node_sni" value="{{.ServerName}}" autocapitalize="off" spellcheck="false">
+    </label>
+    <label data-node-feature="ws"{{if not $ws}} hidden{{end}}>WebSocket 路径
+      <input name="node_ws_path" value="{{.WSPath}}" placeholder="/" autocapitalize="off" spellcheck="false">
+    </label>
+    <label data-node-feature="ws"{{if not $ws}} hidden{{end}}>WebSocket Host
+      <input name="node_ws_host" value="{{.WSHost}}" autocapitalize="off" spellcheck="false">
+    </label>
+    <label data-node-feature="reality"{{if not $reality}} hidden{{end}}>REALITY 公钥
+      <input name="node_reality_key" value="{{.RealityKey}}" autocapitalize="off" spellcheck="false">
+    </label>
+    <label data-node-feature="reality"{{if not $reality}} hidden{{end}}>REALITY Short ID
+      <input name="node_reality_short_id" value="{{.RealityShortID}}" autocapitalize="off" spellcheck="false">
+    </label>
+    <label data-node-feature="reality"{{if not $reality}} hidden{{end}}>VLESS Flow
+      <select name="node_flow">
+        <option value="">无</option>
+        <option value="xtls-rprx-vision"{{if eq .Flow "xtls-rprx-vision"}} selected{{end}}>XTLS Vision</option>
+      </select>
+    </label>
   </div>
   <div class="form-actions">
     <button type="button" data-row-action="up">上移</button>

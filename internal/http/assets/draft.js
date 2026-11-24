@@ -1,3 +1,29 @@
+function updateNodeFields(row) {
+  const protocolField = row.querySelector('[name="node_type"]');
+  if (!protocolField) return;
+
+  const protocol = protocolField.value;
+  const network = row.querySelector('[name="node_network"]').value;
+  const security = row.querySelector('[name="node_security"]');
+  const allowsReality = protocol === 'vless' && network === 'tcp';
+  const realityOption = security.querySelector('[value="reality"]');
+  realityOption.disabled = !allowsReality;
+  realityOption.hidden = !allowsReality;
+  if (!allowsReality && security.value === 'reality') security.value = 'tls';
+
+  const features = {
+    tls: protocol === 'trojan' || (protocol !== 'ss' && security.value !== ''),
+    ws: protocol !== 'ss' && network === 'ws',
+    reality: allowsReality && security.value === 'reality',
+  };
+  for (const field of row.querySelectorAll('[data-node-protocols]')) {
+    field.hidden = !field.dataset.nodeProtocols.split(' ').includes(protocol);
+  }
+  for (const field of row.querySelectorAll('[data-node-feature]')) {
+    field.hidden = !features[field.dataset.nodeFeature];
+  }
+}
+
 for (const section of document.querySelectorAll('[data-draft-rows]')) {
   const list = section.querySelector('[data-row-list]');
   const template = section.querySelector('[data-row-template]');
@@ -6,10 +32,17 @@ for (const section of document.querySelectorAll('[data-draft-rows]')) {
     const rows = Array.from(list.children);
     rows.forEach((row, index) => {
       row.querySelector('[data-row-number]').textContent = index + 1;
+      updateNodeFields(row);
       row.querySelector('[data-row-action="up"]').disabled = index === 0;
       row.querySelector('[data-row-action="down"]').disabled = index === rows.length - 1;
     });
   }
+
+  section.addEventListener('change', (event) => {
+    if (event.target.matches('[name="node_type"], [name="node_network"], [name="node_security"]')) {
+      updateNodeFields(event.target.closest('[data-row]'));
+    }
+  });
 
   section.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-row-action]');

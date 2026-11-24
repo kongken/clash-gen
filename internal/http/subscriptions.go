@@ -16,6 +16,7 @@ var adminHTML embed.FS
 
 var adminTemplates = template.Must(template.New("admin").Funcs(template.FuncMap{
 	"shadowsocksCiphers": subscription.ShadowsocksCiphers,
+	"vmessCiphers":       subscription.VMessCiphers,
 	"emptyNode":          func() subscription.Node { return subscription.Node{Type: "ss"} },
 }).ParseFS(adminHTML, "templates/admin_*.html"))
 
