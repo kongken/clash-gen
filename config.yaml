@@ -1,6 +1,10 @@
 environment: "local"
 base_url: "http://localhost:8080"
 
+# Set admin_token and the storage settings in the deployment config to enable the panel.
+# admin_token: ""
+# redis_url: "redis://127.0.0.1:6379/0"
+
 log:
   level: "info"
   format: "text"
