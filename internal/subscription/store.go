@@ -34,9 +34,12 @@ type Draft struct {
 
 // Subscription contains a draft and the revision used for optimistic writes.
 type Subscription struct {
-	ID           string `json:"id"`
-	DraftVersion uint64 `json:"draft_version"`
-	Draft        Draft  `json:"draft"`
+	ID             string       `json:"id"`
+	DraftVersion   uint64       `json:"draft_version"`
+	Draft          Draft        `json:"draft"`
+	DownloadToken  string       `json:"download_token,omitempty"`
+	PublishAttempt uint64       `json:"publish_attempt,omitempty"`
+	Publication    *Publication `json:"publication,omitempty"`
 }
 
 // Store persists subscriptions in Redis.
@@ -54,14 +57,8 @@ func (s *Store) Create(ctx context.Context, name string) (Subscription, error) {
 		return Subscription{}, err
 	}
 	sub := Subscription{ID: rand.Text(), DraftVersion: 1, Draft: draft}
-	raw, err := json.Marshal(sub)
-	if err != nil {
-		return Subscription{}, err
-	}
-	_, err = s.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		pipe.Set(ctx, subscriptionKey(sub.ID), raw, 0)
+	err := writeSubscription(ctx, s.redis, sub, func(pipe redis.Pipeliner) {
 		pipe.SAdd(ctx, catalogKey, sub.ID)
-		return nil
 	})
 	return sub, err
 }
@@ -107,36 +104,53 @@ func (s *Store) SaveDraft(ctx context.Context, id string, version uint64, draft 
 	if err := draft.normalizeName(); err != nil {
 		return err
 	}
-	key := subscriptionKey(id)
-	for range watchTries {
-		err := s.redis.Watch(ctx, func(tx *redis.Tx) error {
-			sub, err := readSubscription(ctx, tx, id)
-			if err != nil {
-				return err
-			}
-			if sub.DraftVersion != version {
-				return ErrConflict
-			}
-			if reflect.DeepEqual(sub.Draft, draft) {
-				return nil
-			}
-			sub.Draft = draft
-			sub.DraftVersion++
-			raw, err := json.Marshal(sub)
-			if err != nil {
-				return err
-			}
-			_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-				pipe.Set(ctx, key, raw, 0)
-				return nil
-			})
+	return s.watch(ctx, []string{subscriptionKey(id)}, func(tx *redis.Tx) error {
+		sub, err := readSubscription(ctx, tx, id)
+		if err != nil {
 			return err
-		}, key)
+		}
+		if sub.DraftVersion != version {
+			return ErrConflict
+		}
+		if !sub.updateDraft(draft) {
+			return nil
+		}
+		return writeSubscription(ctx, tx, sub, nil)
+	})
+}
+
+func (s *Store) watch(ctx context.Context, keys []string, update func(*redis.Tx) error) error {
+	for range watchTries {
+		err := s.redis.Watch(ctx, update, keys...)
 		if !errors.Is(err, redis.TxFailedErr) {
 			return err
 		}
 	}
 	return ErrConflict
+}
+
+func (s *Subscription) updateDraft(draft Draft) bool {
+	if reflect.DeepEqual(s.Draft, draft) {
+		return false
+	}
+	s.Draft = draft
+	s.DraftVersion++
+	return true
+}
+
+func writeSubscription(ctx context.Context, redisWriter redis.Cmdable, sub Subscription, update func(redis.Pipeliner)) error {
+	raw, err := json.Marshal(sub)
+	if err != nil {
+		return err
+	}
+	_, err = redisWriter.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		pipe.Set(ctx, subscriptionKey(sub.ID), raw, 0)
+		if update != nil {
+			update(pipe)
+		}
+		return nil
+	})
+	return err
 }
 
 func (d *Draft) normalizeName() error {

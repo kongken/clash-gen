@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kongken/clash-gen/internal/subscription"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -49,7 +48,7 @@ func registerAdminAuth(r *gin.Engine, options PanelOptions) {
 	r.POST("/login", sensitiveRequest, requireSameOrigin, auth.login)
 	admin := r.Group("/admin", sensitiveRequest, requireSameOrigin, auth.requireSession)
 	admin.POST("/logout", auth.logout)
-	registerSubscriptions(admin, subscription.NewStore(options.Redis))
+	registerSubscriptions(r, admin, options)
 }
 
 func sensitiveRequest(c *gin.Context) {
