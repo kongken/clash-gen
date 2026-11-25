@@ -37,6 +37,8 @@ type DraftValidationError struct{ err error }
 
 func (e DraftValidationError) Error() string { return e.err.Error() }
 
+func (e DraftValidationError) Unwrap() error { return e.err }
+
 // Publisher manages the lifecycle of private YAML objects and published links.
 type Publisher struct {
 	store   *Store

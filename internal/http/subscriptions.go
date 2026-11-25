@@ -19,11 +19,20 @@ var adminHTML embed.FS
 
 var adminTemplates = template.Must(template.New("admin").Funcs(template.FuncMap{
 	"shadowsocksCiphers": subscription.ShadowsocksCiphers,
-	"formatPublishedAt":  func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04:05") },
+	"formatPublishedAt":  func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04:05 UTC") },
 	"vmessCiphers":       subscription.VMessCiphers,
 	"lines":              func(text string) []string { return strings.Split(strings.TrimSuffix(text, "\n"), "\n") },
 	"add":                func(a, b int) int { return a + b },
-	"emptyNode":          func() subscription.Node { return subscription.Node{Type: "ss"} },
+	"nodeRow": func(node subscription.Node, index int, issue *subscription.RowValidationError) draftRow[subscription.Node] {
+		return newDraftRow(node, subscription.NodeRow, index, issue)
+	},
+	"ruleRow": func(rule subscription.Rule, index int, issue *subscription.RowValidationError) draftRow[subscription.Rule] {
+		return newDraftRow(rule, subscription.RuleRow, index, issue)
+	},
+	"emptyNodeRow": func() draftRow[subscription.Node] {
+		return draftRow[subscription.Node]{Value: subscription.Node{Type: "ss"}}
+	},
+	"emptyRuleRow": func() draftRow[subscription.Rule] { return draftRow[subscription.Rule]{} },
 }).ParseFS(adminHTML, "templates/admin_*.html"))
 
 type adminPanel struct {
@@ -44,11 +53,31 @@ type editPage struct {
 	Version      uint64
 	Preview      string
 	Error        string
+	RowError     *subscription.RowValidationError
 	Notice       string
 	Conflict     bool
 	UploadFailed bool
 	CanPublish   bool
 	DownloadLink string
+}
+
+type draftRow[T any] struct {
+	Value  T
+	Number int
+	Error  string
+}
+
+func newDraftRow[T any](value T, kind subscription.DraftRowKind, index int, issue *subscription.RowValidationError) draftRow[T] {
+	row := draftRow[T]{Value: value, Number: index + 1}
+	if issue != nil && issue.Kind == kind && issue.Number == row.Number {
+		row.Error = issue.Unwrap().Error()
+	}
+	return row
+}
+
+func (page *editPage) setValidationError(err error) {
+	page.Error = err.Error()
+	errors.As(err, &page.RowError)
 }
 
 func registerSubscriptions(r *gin.Engine, admin *gin.RouterGroup, options PanelOptions) {
@@ -147,7 +176,7 @@ func (p *adminPanel) preview(c *gin.Context) {
 	page := editPage{Draft: draft, Version: version}
 	output, err := subscription.GenerateYAML(draft)
 	if err != nil {
-		page.Error = err.Error()
+		page.setValidationError(err)
 		p.renderEditPage(c, http.StatusUnprocessableEntity, page)
 		return
 	}

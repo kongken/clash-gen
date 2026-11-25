@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"errors"
-	"fmt"
 	"net/netip"
 	"strings"
 )
@@ -19,7 +18,7 @@ func (d Draft) mihomoRules() ([]string, error) {
 	for index, rule := range d.Rules {
 		entry, err := rule.mihomo()
 		if err != nil {
-			return nil, fmt.Errorf("规则 %d：%w", index+1, err)
+			return nil, &RowValidationError{Kind: RuleRow, Number: index + 1, err: err}
 		}
 		rules = append(rules, entry)
 	}

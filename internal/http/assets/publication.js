@@ -25,6 +25,12 @@ copyLink?.addEventListener('click', async () => {
 const copyYaml = document.querySelector('#copy-yaml');
 const yamlPreview = document.querySelector('#yaml-preview');
 const yamlFeedback = document.querySelector('#copy-yaml-feedback');
+const yamlHeading = document.querySelector('#yaml-heading');
+
+if (yamlHeading) {
+  yamlHeading.focus({ preventScroll: true });
+  yamlHeading.scrollIntoView({ block: 'start' });
+}
 
 copyYaml?.addEventListener('click', async () => {
   yamlFeedback.hidden = false;

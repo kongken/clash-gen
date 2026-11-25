@@ -26,7 +26,7 @@ func (p *adminPanel) publish(c *gin.Context) {
 		page.Error = "请输入 1 至 120 个字符的订阅名称。"
 		p.renderEditPage(c, http.StatusUnprocessableEntity, page)
 	case errors.As(err, &invalid):
-		page.Error = invalid.Error()
+		page.setValidationError(invalid)
 		p.renderEditPage(c, http.StatusUnprocessableEntity, page)
 	case errors.Is(err, subscription.ErrNotFound):
 		c.String(http.StatusNotFound, "找不到订阅。")

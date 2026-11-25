@@ -24,6 +24,8 @@ function updateNodeFields(row) {
   }
 }
 
+const rowErrorSummary = document.querySelector('[data-row-error-summary]');
+
 for (const section of document.querySelectorAll('[data-draft-rows]')) {
   const list = section.querySelector('[data-row-list]');
   const template = section.querySelector('[data-row-template]');
@@ -33,8 +35,12 @@ for (const section of document.querySelectorAll('[data-draft-rows]')) {
     const count = section.querySelector('[data-row-count]');
     if (count) count.textContent = rows.length;
     rows.forEach((row, index) => {
-      const number = row.querySelector('[data-row-number]');
-      if (number) number.textContent = index + 1;
+      const number = index + 1;
+      row.querySelector('[data-row-number]').textContent = number;
+      const label = `${row.dataset.rowLabel} ${number}`;
+      row.setAttribute('aria-label', label);
+      const error = row.querySelector('.row-error');
+      if (error && rowErrorSummary) rowErrorSummary.textContent = `${label}：${error.textContent}`;
       updateNodeFields(row);
       row.querySelector('[data-row-action="up"]').disabled = index === 0;
       row.querySelector('[data-row-action="down"]').disabled = index === rows.length - 1;
@@ -61,6 +67,9 @@ for (const section of document.querySelectorAll('[data-draft-rows]')) {
         break;
       }
       case 'remove':
+        if (row.classList.contains('row-invalid') && rowErrorSummary) {
+          rowErrorSummary.closest('[role="alert"]').hidden = true;
+        }
         row.remove();
         section.querySelector('[data-row-action="add"]').focus();
         break;

@@ -24,11 +24,12 @@
     </div>
     {{if .Error}}
     <div class="banner {{if .Conflict}}banner-warning{{else}}banner-error{{end}}" role="alert">
-      <strong>{{.Error}}</strong>
+      <strong{{if .RowError}} data-row-error-summary{{end}}>{{.Error}}</strong>
       {{if and .UploadFailed .Subscription.Publication}}<p>线上文件未受影响，仍保留最近一次成功发布版本。</p>{{end}}
     </div>
     {{end}}
     {{if .Notice}}<div class="banner banner-success" role="status"><strong>{{.Notice}}</strong></div>{{end}}
+    {{if .Preview}}<p class="banner banner-success" role="status">已生成 YAML 预览。<a href="#yaml-heading">查看预览</a></p>{{end}}
     <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}" class="section form-stack">
       <input type="hidden" name="version" value="{{.Version}}">
       <section class="card action-bar" aria-label="草稿操作">
@@ -45,8 +46,8 @@
           <input id="edit-name" name="name" value="{{.Draft.Name}}" maxlength="120" required>
         </label>
       </section>
-      {{template "admin_nodes" .Draft.Nodes}}
-      {{template "admin_rules" .Draft}}
+      {{template "admin_nodes" .}}
+      {{template "admin_rules" .}}
       {{template "admin_settings" .Draft.Settings}}
     </form>
     {{if .DownloadLink}}{{template "admin_publication_link" .}}{{end}}
@@ -54,7 +55,7 @@
     <section class="card yaml-card" aria-labelledby="yaml-heading">
       <div class="card-head">
         <div>
-          <h2 class="card-title" id="yaml-heading">Mihomo YAML 预览</h2>
+          <h2 class="card-title" id="yaml-heading" tabindex="-1">Mihomo YAML 预览</h2>
           <span class="hint mono">config.yaml · {{len (lines .Preview)}} 行</span>
         </div>
         <button class="button-compact" type="button" id="copy-yaml">复制 YAML</button>

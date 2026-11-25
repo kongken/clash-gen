@@ -3,31 +3,34 @@
   <div class="section-head">
     <div>
       <h2 class="section-title" id="nodes-heading">代理节点</h2>
-      <span class="count-badge" data-row-count>{{len .}}</span>
+      <span class="count-badge" data-row-count>{{len .Draft.Nodes}}</span>
     </div>
     <button class="button-compact" type="button" data-row-action="add">添加节点</button>
   </div>
-  <div data-row-list>{{range .}}{{template "admin_node_row" .}}{{end}}</div>
-  <template data-row-template>{{template "admin_node_row" emptyNode}}</template>
+  <div data-row-list>{{range $index, $node := .Draft.Nodes}}{{template "admin_node_row" (nodeRow $node $index $.RowError)}}{{end}}</div>
+  <template data-row-template>{{template "admin_node_row" emptyNodeRow}}</template>
 </section>
 {{end}}
 
 {{define "admin_node_row"}}
+{{$row := .}}
+{{with .Value}}
 {{$ss := or (eq .Type "") (eq .Type "ss")}}
 {{$uuid := or (eq .Type "vmess") (eq .Type "vless")}}
 {{$trojan := eq .Type "trojan"}}
 {{$ws := and (not $ss) (eq .Network "ws")}}
 {{$allowsReality := and (eq .Type "vless") (not $ws)}}
 {{$reality := and $allowsReality (eq .Security "reality")}}
-<div class="node-card" data-row role="group" aria-label="代理节点">
+<div class="node-card{{if $row.Error}} row-invalid{{end}}" data-row data-row-label="节点" role="group" aria-label="节点 {{$row.Number}}"{{if $row.Error}} aria-describedby="node-row-error"{{end}}>
   <div class="node-head">
-    <span class="row-title"><span class="row-number">#<span data-row-number></span></span><span class="item-title">代理节点</span></span>
+    <span class="row-title"><span class="row-number">#<span data-row-number>{{if $row.Number}}{{$row.Number}}{{end}}</span></span><span class="item-title">代理节点</span></span>
     <span class="row-tools">
       <button class="button-ghost button-compact" type="button" data-row-action="up" aria-label="上移节点">上移</button>
       <button class="button-ghost button-compact" type="button" data-row-action="down" aria-label="下移节点">下移</button>
       <button class="button-ghost button-compact button-danger" type="button" data-row-action="remove">删除节点</button>
     </span>
   </div>
+  {{if $row.Error}}<p class="row-error" id="node-row-error">{{$row.Error}}</p>{{end}}
   <div class="field-grid">
     <label><span class="label-text">名称</span>
       <input name="node_name" value="{{.Name}}"></label>
@@ -47,7 +50,7 @@
       <select name="node_cipher">
         <option value="">请选择</option>
         {{range $cipher := shadowsocksCiphers}}
-        <option value="{{$cipher}}"{{if eq $.Cipher $cipher}} selected{{end}}>{{$cipher}}</option>
+        <option value="{{$cipher}}"{{if eq $row.Value.Cipher $cipher}} selected{{end}}>{{$cipher}}</option>
         {{end}}
       </select>
     </label>
@@ -63,7 +66,7 @@
     <label data-node-protocols="vmess"{{if ne .Type "vmess"}} hidden{{end}}><span class="label-text">VMess 加密方式</span>
       <select name="node_vmess_cipher">
         {{range $cipher := vmessCiphers}}
-        <option value="{{$cipher}}"{{if eq $.VMessCipher $cipher}} selected{{end}}>{{$cipher}}</option>
+        <option value="{{$cipher}}"{{if eq $row.Value.VMessCipher $cipher}} selected{{end}}>{{$cipher}}</option>
         {{end}}
       </select>
     </label>
@@ -104,4 +107,5 @@
     </label>
   </div>
 </div>
+{{end}}
 {{end}}

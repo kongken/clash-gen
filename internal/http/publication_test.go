@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
@@ -23,6 +22,7 @@ import (
 	"github.com/kongken/clash-gen/internal/config"
 	"github.com/kongken/clash-gen/internal/subscription"
 	"github.com/redis/go-redis/v9"
+	"golang.org/x/net/html"
 )
 
 func TestPublishPreviewMatchesAnonymousDownload(t *testing.T) {
@@ -61,7 +61,7 @@ func TestPublishPreviewMatchesAnonymousDownload(t *testing.T) {
 		t.Fatalf("publish returned %d %q", response.Code, response.Body.String())
 	}
 	published := authRequest(router, http.MethodGet, editor, nil, cookie)
-	if published.Code != http.StatusOK || !strings.Contains(published.Body.String(), ">已发布<") || !strings.Contains(published.Body.String(), "最近成功发布") {
+	if published.Code != http.StatusOK || !strings.Contains(published.Body.String(), ">已发布<") || !strings.Contains(published.Body.String(), " UTC</time>") {
 		t.Fatalf("published editor returned %d without state or timestamp", published.Code)
 	}
 	link := readPublishedLink(t, published.Body.String())
@@ -442,17 +442,34 @@ func publicationForm(name, node, version string) url.Values {
 
 func readPublishedLink(t *testing.T, page string) *url.URL {
 	t.Helper()
-	_, value, found := strings.Cut(page, `id="download-link" value="`)
-	if !found {
-		t.Fatal("download link is missing from the editor")
+	tokens := html.NewTokenizer(strings.NewReader(page))
+	for {
+		kind := tokens.Next()
+		if kind == html.ErrorToken {
+			t.Fatal("download link is missing from the editor")
+		}
+		if kind != html.StartTagToken && kind != html.SelfClosingTagToken {
+			continue
+		}
+		input := tokens.Token()
+		if input.Data != "input" {
+			continue
+		}
+		var id, value string
+		for _, attribute := range input.Attr {
+			switch attribute.Key {
+			case "id":
+				id = attribute.Val
+			case "value":
+				value = attribute.Val
+			}
+		}
+		if id == "download-link" {
+			link, err := url.Parse(value)
+			if err != nil || link.Query().Get("token") == "" {
+				t.Fatal("download link is invalid")
+			}
+			return link
+		}
 	}
-	value, _, found = strings.Cut(value, `"`)
-	if !found {
-		t.Fatal("download link is incomplete")
-	}
-	link, err := url.Parse(html.UnescapeString(value))
-	if err != nil || link.Query().Get("token") == "" {
-		t.Fatal("download link is invalid")
-	}
-	return link
 }

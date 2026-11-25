@@ -3,17 +3,17 @@
   <div class="section-head">
     <div>
       <h2 class="section-title" id="rules-heading">分流规则</h2>
-      <span class="count-badge" data-row-count>{{len .Rules}}</span>
+      <span class="count-badge" data-row-count>{{len .Draft.Rules}}</span>
     </div>
     <button class="button-compact" type="button" data-row-action="add">添加规则</button>
   </div>
   <div class="rule-table">
-    <div class="rule-list" data-row-list>{{range .Rules}}{{template "admin_rule_row" .}}{{end}}</div>
-    <template data-row-template>{{template "admin_rule_row"}}</template>
+    <div class="rule-list" data-row-list>{{range $index, $rule := .Draft.Rules}}{{template "admin_rule_row" (ruleRow $rule $index $.RowError)}}{{end}}</div>
+    <template data-row-template>{{template "admin_rule_row" emptyRuleRow}}</template>
     <div class="rule-footer">
       <span class="match-tag"><code>MATCH</code><span class="hint">兜底规则，固定位于规则列表末尾</span></span>
       <label>
-        <select name="match_target" aria-label="MATCH 默认去向">{{template "admin_rule_targets" .MatchTarget}}</select>
+        <select name="match_target" aria-label="MATCH 默认去向">{{template "admin_rule_targets" .Draft.MatchTarget}}</select>
       </label>
     </div>
   </div>
@@ -21,7 +21,10 @@
 {{end}}
 
 {{define "admin_rule_row"}}
-<div class="rule-row" data-row role="group" aria-label="分流规则">
+{{$row := .}}
+{{with .Value}}
+<div class="rule-row{{if $row.Error}} row-invalid{{end}}" data-row data-row-label="规则" role="group" aria-label="规则 {{$row.Number}}"{{if $row.Error}} aria-describedby="rule-row-error"{{end}}>
+  <span class="rule-number mono">#<span data-row-number>{{if $row.Number}}{{$row.Number}}{{end}}</span></span>
   <label><span class="label-text">类型</span>
     <select name="rule_type">
       <option value="DOMAIN"{{if eq .Type "DOMAIN"}} selected{{end}}>DOMAIN（域名）</option>
@@ -39,7 +42,9 @@
     <button class="button-icon" type="button" data-row-action="down" aria-label="下移规则">↓</button>
     <button class="button-icon button-danger" type="button" data-row-action="remove" aria-label="删除规则">✕</button>
   </span>
+  {{if $row.Error}}<p class="row-error" id="rule-row-error">{{$row.Error}}</p>{{end}}
 </div>
+{{end}}
 {{end}}
 
 {{define "admin_rule_targets"}}

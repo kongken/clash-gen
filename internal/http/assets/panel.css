@@ -318,11 +318,14 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary-co
 .node-head .row-title { display: inline-flex; align-items: center; gap: 12px; }
 .row-tools { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .node-card .field-grid { padding: 24px; }
+.row-error { color: var(--on-error-container); }
+.node-card.row-invalid { border-color: var(--error); }
+.node-card > .row-error { padding: 12px 24px 0; }
 
 .rule-table { overflow: hidden; border: 1px solid var(--outline-variant); border-radius: var(--radius-md); background: var(--surface-lowest); }
 .rule-row {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 4fr) minmax(0, 3fr) auto;
+  grid-template-columns: auto minmax(0, 3fr) minmax(0, 4fr) minmax(0, 3fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
@@ -333,6 +336,9 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary-co
 .rule-row label > .label-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .rule-row input, .rule-row select { min-height: 32px; padding: 4px 10px; }
 .rule-row .row-tools { justify-self: end; }
+.rule-number { color: var(--on-surface-variant); }
+.rule-row.row-invalid { background: var(--error-container); }
+.rule-row > .row-error { grid-column: 1 / -1; }
 .rule-empty { padding: 16px; color: var(--on-surface-variant); }
 .rule-footer {
   display: flex;
@@ -371,6 +377,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary-co
 /* YAML preview */
 .yaml-card .card-head { gap: 8px 16px; }
 .yaml-card .card-head > div { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+#yaml-heading { scroll-margin-top: 72px; }
 .yaml-viewer {
   display: flex;
   max-height: 32rem;
@@ -413,8 +420,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary-co
   .field-grid { grid-template-columns: minmax(0, 1fr); }
   .node-card .field-grid { padding: 16px; }
   .page-head > .button, .create-form button, .action-bar .actions, .action-bar .actions > *, .link-row > *, .danger-zone > .button, .confirm-actions > *, .confirm-actions form > * { width: 100%; }
-  .action-bar .actions { flex-direction: column-reverse; }
-  .confirm-actions { flex-direction: column-reverse; }
+  .action-bar .actions, .confirm-actions { flex-direction: column; }
   .link-row form button { width: 100%; }
   .table-head { display: none; }
   .table-row { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 16px; }
@@ -424,6 +430,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary-co
   .table-row > .cell-action .button { width: 100%; }
   .cell-label { display: inline; color: var(--on-surface-variant); font-size: 12px; }
   .rule-row { grid-template-columns: minmax(0, 1fr) auto; padding: 16px; }
+  .rule-number { grid-column: 1 / -1; }
+  .node-card > .row-error { padding-inline: 16px; }
   .rule-row > label:nth-of-type(1), .rule-row > label:nth-of-type(2) { grid-column: 1 / -1; }
   .rule-row > label:nth-of-type(3) { grid-column: 1; }
   .rule-row .row-tools { grid-column: 2; }

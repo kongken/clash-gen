@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"errors"
-	"fmt"
 
 	"gopkg.in/yaml.v3"
 )
@@ -33,11 +32,11 @@ func GenerateYAML(draft Draft) ([]byte, error) {
 	for index, node := range draft.Nodes {
 		proxy, err := node.proxy()
 		if err != nil {
-			return nil, fmt.Errorf("节点 %d：%w", index+1, err)
+			return nil, &RowValidationError{Kind: NodeRow, Number: index + 1, err: err}
 		}
 		name := proxy["name"].(string)
 		if seen[name] {
-			return nil, fmt.Errorf("节点 %d：节点名称必须唯一。", index+1)
+			return nil, &RowValidationError{Kind: NodeRow, Number: index + 1, err: errors.New("节点名称必须唯一。")}
 		}
 		seen[name] = true
 		names = append(names, name)

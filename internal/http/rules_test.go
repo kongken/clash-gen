@@ -56,6 +56,9 @@ func TestDraftRulesAndSettingsInMihomoPreview(t *testing.T) {
 	if preview.Code != http.StatusOK {
 		t.Fatalf("preview custom settings returned %d %q", preview.Code, preview.Body.String())
 	}
+	if !strings.Contains(preview.Body.String(), `href="#yaml-heading">查看预览`) {
+		t.Fatal("preview response is missing a jump to the YAML output")
+	}
 	output := yamlFromPreview(t, preview.Body.String())
 	var config struct {
 		Mode      string
@@ -88,6 +91,40 @@ func TestDraftRulesAndSettingsInMihomoPreview(t *testing.T) {
 		t.Fatalf("rules = %q, want %q", config.Rules, wantRules)
 	}
 	verifyMihomoYAML(t, output)
+}
+
+func TestPreviewIdentifiesTheInvalidDraftRow(t *testing.T) {
+	router, cookie, path := newDraftEditor(t, "定位错误")
+	form := url.Values{
+		"name": {"定位错误"}, "version": {"1"},
+		"node_name": {"节点一", "节点二"}, "node_server": {"one.example.test", "two.example.test"},
+		"node_port": {"443", "443"}, "node_cipher": {"aes-128-gcm", "aes-128-gcm"},
+		"node_password": {"fixture-password", ""},
+		"rule_type":     {"DOMAIN", "IP-CIDR"}, "rule_value": {"example.test", "invalid-prefix"},
+		"rule_target": {"PROXY", "DIRECT"},
+	}
+	for _, test := range []struct {
+		name string
+		row  string
+		id   string
+		text string
+	}{
+		{"second node", "节点 2", "node-row-error", "请输入 Shadowsocks 密码。"},
+		{"second rule", "规则 2", "rule-row-error", "请输入有效的 IPv4 或 IPv6 网段。"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			preview := authRequest(router, http.MethodPost, path+"/preview", form, cookie)
+			page := preview.Body.String()
+			group := `aria-label="` + test.row + `" aria-describedby="` + test.id + `"`
+			message := `id="` + test.id + `">` + test.text + `</p>`
+			if preview.Code != http.StatusUnprocessableEntity || !strings.Contains(page, group) ||
+				!strings.Contains(page, message) || strings.Count(page, "row-invalid") != 1 {
+				t.Fatalf("expected a single inline error for %s, status %d", test.row, preview.Code)
+			}
+		})
+		// A valid node allows the next preview to reach routing rule validation.
+		form["node_password"][1] = "another-fixture-password"
+	}
 }
 
 func TestDraftRulesAndSettingsReportValidationErrors(t *testing.T) {
