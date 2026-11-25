@@ -27,7 +27,12 @@ import (
 
 func TestPublishPreviewMatchesAnonymousDownload(t *testing.T) {
 	fixture := newPublicationFixture(t)
-	router, _ := fixture.router(t)
+	var observedURI, observedURL string
+	router, _ := fixture.router(t, func(c *gin.Context) {
+		observedURI = c.Request.RequestURI
+		observedURL = c.Request.URL.String()
+		c.Next()
+	})
 	cookie, editor := publicationEditor(t, router, "家庭订阅")
 
 	unpublished := authRequest(router, http.MethodGet, editor, nil, cookie)
@@ -43,7 +48,7 @@ func TestPublishPreviewMatchesAnonymousDownload(t *testing.T) {
 		t.Fatalf("publish without nodes returned %d", response.Code)
 	}
 
-	form := publicationForm("家庭订阅", "首发节点", "1")
+	form := mixedProtocolForm("家庭订阅", "1")
 	if anonymous := authRequest(router, http.MethodPost, editor+"/publish", form, nil); anonymous.Code != http.StatusUnauthorized {
 		t.Fatalf("anonymous publish returned %d", anonymous.Code)
 	}
@@ -69,6 +74,29 @@ func TestPublishPreviewMatchesAnonymousDownload(t *testing.T) {
 		!strings.HasPrefix(download.Header().Get("Content-Type"), "application/yaml") || !bytes.Equal(download.Body.Bytes(), want) {
 		t.Fatalf("anonymous download returned %d or differed from preview", download.Code)
 	}
+	if observedURI != link.Path || observedURL != link.Path {
+		t.Fatal("download token reached request observers")
+	}
+
+	trailing := *link
+	trailing.Path += "/"
+	slashDownload := authRequest(router, http.MethodGet, trailing.RequestURI(), nil, nil)
+	if slashDownload.Code != http.StatusOK || !bytes.Equal(slashDownload.Body.Bytes(), want) {
+		t.Fatalf("anonymous download with trailing slash returned %d or differed from preview", slashDownload.Code)
+	}
+	if observedURI != trailing.Path || observedURL != trailing.Path {
+		t.Fatal("download token reached request observers on trailing-slash path")
+	}
+
+	unmatched := *link
+	unmatched.Path += "/unmatched"
+	if response := authRequest(router, http.MethodGet, unmatched.RequestURI(), nil, nil); response.Code != http.StatusNotFound {
+		t.Fatalf("unknown download path returned %d", response.Code)
+	}
+	if observedURI != unmatched.Path || observedURL != unmatched.Path {
+		t.Fatal("download token reached request observers on unmatched path")
+	}
+
 	for _, target := range []string{link.Path, link.Path + "?token=wrong"} {
 		if response := authRequest(router, http.MethodGet, target, nil, nil); response.Code != http.StatusNotFound || bytes.Equal(want, response.Body.Bytes()) {
 			t.Fatalf("unauthorized download returned %d", response.Code)
@@ -301,14 +329,18 @@ func runCleanupForTest(t *testing.T, publisher *subscription.Publisher) func() {
 	}
 }
 
-func waitForPublicationObjects(t *testing.T, cfg config.ObjectStoreConfig, want int) {
-	t.Helper()
-	client := s3.New(s3.Options{
+func publicationS3Client(cfg config.ObjectStoreConfig) *s3.Client {
+	return s3.New(s3.Options{
 		Region:       cfg.Region,
 		BaseEndpoint: aws.String(cfg.Endpoint),
 		UsePathStyle: true,
 		Credentials:  credentials.NewStaticCredentialsProvider(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
 	})
+}
+
+func waitForPublicationObjects(t *testing.T, cfg config.ObjectStoreConfig, want int) {
+	t.Helper()
+	client := publicationS3Client(cfg)
 	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 	defer cancel()
 	lastCount := -1
@@ -364,7 +396,7 @@ func newPublicationFixture(t *testing.T) publicationFixture {
 	}
 }
 
-func (f publicationFixture) router(t *testing.T) (*gin.Engine, *subscription.Publisher) {
+func (f publicationFixture) router(t *testing.T, middleware ...gin.HandlerFunc) (*gin.Engine, *subscription.Publisher) {
 	t.Helper()
 	redisClient := redis.NewClient(f.redisOptions)
 	t.Cleanup(func() { _ = redisClient.Close() })
@@ -379,7 +411,10 @@ func (f publicationFixture) router(t *testing.T) (*gin.Engine, *subscription.Pub
 	}
 	publisher := subscription.NewPublisher(subscription.NewStore(redisClient), objects)
 	router := gin.New()
-	RegisterRoutes(router, PanelOptions{AdminToken: "test-admin-token", Redis: redisClient, BaseURL: f.baseURL, Publisher: publisher})
+	router.Use(middleware...)
+	if err := RegisterRoutes(router, PanelOptions{AdminToken: "test-admin-token", Redis: redisClient, BaseURL: f.baseURL, Publisher: publisher}); err != nil {
+		t.Fatal(err)
+	}
 	return router, publisher
 }
 

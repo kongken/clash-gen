@@ -17,9 +17,13 @@ curl localhost:8080/ping
 
 Create a private bucket in MinIO or another S3-compatible service. Give the
 application credentials permission to put, get, and delete objects under its
-configured prefix. Enable Redis persistence (for example, `appendonly yes` on a
-persistent volume) and use `maxmemory-policy noeviction`. Redis stores drafts,
-download permissions, publication state, and items waiting for cleanup without
+configured prefix. For a versioned bucket, also grant `s3:ListBucketVersions`
+on the bucket for the configured prefix and `s3:DeleteObjectVersion` under that
+prefix so cleanup can remove stored versions and their delete markers.
+
+Enable Redis persistence, for example with `appendonly yes` on a persistent
+volume, and use `maxmemory-policy noeviction`. Redis stores drafts, download
+permissions, publication state, and items waiting for cleanup without
 expiration. Keep both data volumes across restarts.
 
 Copy `config.yaml` to a private deployment configuration and fill in these
@@ -42,9 +46,12 @@ object_store:
 
 `base_url` is the public address of this Go service. Serve it over HTTPS in
 production. It supplies the origin for client links and enables secure admin
-cookies. Keep the storage API on the private network. If a reverse proxy logs
-requests, configure it to omit query strings for `/subscription/` because they
-contain download Tokens. Path-style addressing is enabled by default.
+cookies. A path in `base_url` prefixes the download links. Configure the reverse
+proxy to strip that prefix when forwarding downloads to Gin's
+`/subscription/:id` route. The admin panel uses `/admin` and `/login` at the
+origin root. Keep the storage API on the private network. Configure any reverse
+proxy to omit query strings from download request logs because they contain
+download Tokens. Path-style addressing is enabled by default.
 
 For a container deployment, mount the file and point Butterfly at it. Replace
 `your-app-network` with the network that reaches Redis and MinIO.
@@ -68,8 +75,9 @@ and the service retries object cleanup in the background. Changing
 ## Acceptance tests
 
 `make test` runs the Gin HTTP suite. To include the Redis and object-store
-acceptance tests, point the suite at an isolated Redis database and a private
-MinIO bucket with test credentials. Set `CLASH_GEN_TEST_MIHOMO` to the local
+acceptance tests, point the suite at a disposable Redis database and a private,
+disposable MinIO bucket with test credentials. Test fixtures can remain in those
+services after a run. Set `CLASH_GEN_TEST_MIHOMO` to the local
 Mihomo executable to have it load the generated YAML.
 
 ```sh
@@ -81,6 +89,10 @@ CLASH_GEN_TEST_S3_SECRET_ACCESS_KEY=example-test-secret \
 CLASH_GEN_TEST_MIHOMO=/path/to/mihomo \
 go test -race -count=1 ./...
 ```
+
+Use a versioning-enabled test bucket to verify that cleanup removes stored
+versions and delete markers. The acceptance credentials also need permission
+to list test objects and read the bucket's versioning state.
 
 ## Commands
 

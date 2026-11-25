@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/kongken/clash-gen/internal/subscription"
@@ -40,10 +41,27 @@ func (p *adminPanel) publish(c *gin.Context) {
 	}
 }
 
+const downloadTokenContextKey = "clash-gen:download-token"
+
+func scrubDownloadToken(c *gin.Context) {
+	request := c.Request
+	if request.URL.Path == "/subscription" || strings.HasPrefix(request.URL.Path, "/subscription/") {
+		query := request.URL.Query()
+		if query.Has("token") {
+			c.Set(downloadTokenContextKey, query.Get("token"))
+			query.Del("token")
+			request.URL.RawQuery = query.Encode()
+			request.URL.ForceQuery = false
+			request.RequestURI = request.URL.RequestURI()
+		}
+	}
+	c.Next()
+}
+
 func (p *adminPanel) download(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), subscription.ObjectTimeout)
 	defer cancel()
-	body, length, err := p.publisher.Download(ctx, c.Param("id"), c.Query("token"))
+	body, length, err := p.publisher.Download(ctx, c.Param("id"), c.GetString(downloadTokenContextKey))
 	switch {
 	case errors.Is(err, subscription.ErrNotFound):
 		c.String(http.StatusNotFound, "找不到订阅。")
