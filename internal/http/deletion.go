@@ -11,7 +11,7 @@ import (
 type deletePage struct {
 	EditorPath string
 	Name       string
-	Published  bool
+	Published  *subscription.Publication
 	Error      string
 }
 
@@ -48,7 +48,7 @@ func (p *adminPanel) renderDelete(c *gin.Context, status int, message string) {
 		renderPanel(c, status, "admin_delete.html", deletePage{
 			EditorPath: subscriptionPath(sub.ID),
 			Name:       sub.Draft.Name,
-			Published:  sub.Publication != nil,
+			Published:  sub.Publication,
 			Error:      message,
 		})
 	}

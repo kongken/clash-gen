@@ -6,44 +6,74 @@
   <title>{{.Draft.Name}} · Clash 订阅管理</title>
   <link rel="stylesheet" href="/assets/panel.css">
   <script src="/assets/draft.js" defer></script>
-  {{if .DownloadLink}}<script src="/assets/publication.js" defer></script>{{end}}
+  {{if or .DownloadLink .Preview}}<script src="/assets/publication.js" defer></script>{{end}}
 </head>
 <body>
   {{template "admin_header"}}
   <main class="panel-container">
-    <p><a href="/admin">返回订阅列表</a></p>
-    <h1>编辑订阅</h1>
-    <p class="status-label">{{template "admin_publication_status" .Subscription}}</p>
-    {{with .Subscription.Publication}}<p>最近成功发布 <time datetime="{{.PublishedAt.Format "2006-01-02T15:04:05Z07:00"}}">{{formatPublishedAt .PublishedAt}}</time></p>{{end}}
-    {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
-    {{if .Notice}}<p class="form-notice" role="status">{{.Notice}}</p>{{end}}
-    <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}">
+    <div class="page-head">
+      <div class="crumbs">
+        <a class="button button-ghost button-compact" href="/admin">← 订阅列表</a>
+        <span class="sep" aria-hidden="true">/</span>
+        <h1 class="section-title">{{.Draft.Name}}</h1>
+        {{template "admin_publication_badge" .Subscription}}
+      </div>
+      <p class="publish-meta">最近成功发布
+        {{with .Subscription.Publication}}<time datetime="{{.PublishedAt.Format "2006-01-02T15:04:05Z07:00"}}" title="UTC">{{formatPublishedAt .PublishedAt}}</time>{{else}}<span class="mono">—</span>{{end}}
+      </p>
+    </div>
+    {{if .Error}}
+    <div class="banner {{if .Conflict}}banner-warning{{else}}banner-error{{end}}" role="alert">
+      <strong>{{.Error}}</strong>
+      {{if and .UploadFailed .Subscription.Publication}}<p>线上文件未受影响，仍保留最近一次成功发布版本。</p>{{end}}
+    </div>
+    {{end}}
+    {{if .Notice}}<div class="banner banner-success" role="status"><strong>{{.Notice}}</strong></div>{{end}}
+    <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}" class="section form-stack">
       <input type="hidden" name="version" value="{{.Version}}">
-      <section class="panel-section">
-        <div class="form-row">
-          <label for="edit-name">订阅名称</label>
-          <input id="edit-name" name="name" value="{{.Draft.Name}}" maxlength="120" required>
+      <section class="card action-bar" aria-label="草稿操作">
+        <p>保存草稿后，建议先预览 YAML 校验输出再发布。</p>
+        <div class="actions">
+          <button type="submit">保存草稿</button>
+          <button class="button-tertiary" type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/preview">预览 YAML</button>
+          {{if .CanPublish}}<button class="button-primary" type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/publish">发布订阅</button>{{end}}
         </div>
+      </section>
+      <section class="card card-body" aria-label="订阅名称">
+        <label for="edit-name">
+          <span class="label-text">订阅名称</span>
+          <input id="edit-name" name="name" value="{{.Draft.Name}}" maxlength="120" required>
+        </label>
       </section>
       {{template "admin_nodes" .Draft.Nodes}}
       {{template "admin_rules" .Draft}}
       {{template "admin_settings" .Draft.Settings}}
-      <div class="form-actions">
-        <button class="button-primary" type="submit">保存草稿</button>
-        <button type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/preview">预览 YAML</button>
-        {{if .CanPublish}}<button type="submit" formaction="/admin/subscriptions/{{.Subscription.ID}}/publish">发布订阅</button>{{end}}
-      </div>
     </form>
     {{if .DownloadLink}}{{template "admin_publication_link" .}}{{end}}
     {{if .Preview}}
-    <section class="panel-section" aria-labelledby="yaml-heading">
-      <h2 id="yaml-heading">Mihomo YAML 预览</h2>
-      <pre id="yaml-preview">{{.Preview}}</pre>
+    <section class="card yaml-card" aria-labelledby="yaml-heading">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title" id="yaml-heading">Mihomo YAML 预览</h2>
+          <span class="hint mono">config.yaml · {{len (lines .Preview)}} 行</span>
+        </div>
+        <button class="button-compact" type="button" id="copy-yaml">复制 YAML</button>
+      </div>
+      <div class="yaml-viewer">
+        <pre class="yaml-gutter" aria-hidden="true">{{range $i, $_ := lines .Preview}}{{if $i}}
+{{end}}{{add $i 1}}{{end}}</pre>
+        <pre id="yaml-preview">{{.Preview}}</pre>
+      </div>
+      <p class="hint card-note" id="copy-yaml-feedback" role="status" hidden></p>
     </section>
     {{end}}
-    <div class="form-actions">
+    <section class="danger-zone" aria-label="危险操作区">
+      <div>
+        <span class="item-title">危险操作区</span>
+        <span class="hint">删除订阅与保存、发布分离；删除后现有下载链接将立即失效。</span>
+      </div>
       <a class="button button-danger" href="/admin/subscriptions/{{.Subscription.ID}}/delete">删除订阅</a>
-    </div>
+    </section>
   </main>
 </body>
 </html>

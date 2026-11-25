@@ -9,27 +9,55 @@
 <body>
   {{template "admin_header"}}
   <main class="panel-container">
-    <h1>订阅列表</h1>
-    <section class="panel-section" aria-labelledby="add-subscription-title">
-      <h2 id="add-subscription-title">新建订阅</h2>
-      {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
-      <form method="post" action="/admin/subscriptions" class="form-row">
-        <label for="create-name">订阅名称</label>
-        <input id="create-name" name="name" value="{{.Name}}" maxlength="120" required>
-        <button class="button-primary" type="submit">创建订阅</button>
-      </form>
+    <div class="page-head">
+      <div>
+        <h1 class="page-title">订阅列表</h1>
+        <p class="hint">管理 Mihomo 订阅草稿、发布状态与下载入口</p>
+      </div>
+    </div>
+    <section class="card" aria-labelledby="add-subscription-title">
+      <div class="card-body">
+        <h2 class="card-title" id="add-subscription-title">新建订阅</h2>
+        {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+        <form method="post" action="/admin/subscriptions" class="create-form">
+          <label for="create-name">
+            <span class="label-text">订阅名称</span>
+            <input id="create-name" name="name" value="{{.Name}}" maxlength="120" required>
+          </label>
+          <button class="button-primary" type="submit">创建订阅</button>
+        </form>
+      </div>
     </section>
-    <section class="panel-section" aria-label="现有订阅">
-      {{if .Subscriptions}}
-      <ul class="subscription-list">
+    {{if .Subscriptions}}
+    <section class="card" aria-label="现有订阅">
+      <div class="table-head" aria-hidden="true">
+        <span>订阅名称</span><span>发布状态</span><span>最近成功发布时间</span><span>操作</span>
+      </div>
+      <ul class="table-rows">
         {{range .Subscriptions}}
-        <li><a href="/admin/subscriptions/{{.ID}}">{{.Draft.Name}}</a> <span class="status-label">{{template "admin_publication_status" .}}</span></li>
+        <li>
+          <div class="table-row">
+            <div class="name">
+              <a href="/admin/subscriptions/{{.ID}}">{{.Draft.Name}}</a>
+              <span class="meta">{{.ID}} · {{len .Draft.Nodes}} 个节点 · {{len .Draft.Rules}} 条规则</span>
+            </div>
+            <div class="cell-status">{{template "admin_publication_badge" .}}</div>
+            <div class="cell-time">
+              <span class="cell-label">最近成功发布</span>
+              {{with .Publication}}<time datetime="{{.PublishedAt.Format "2006-01-02T15:04:05Z07:00"}}" title="UTC">{{formatPublishedAt .PublishedAt}}</time>{{else}}<span class="mono muted">—</span>{{end}}
+            </div>
+            <div class="cell-action"><a class="button button-compact" href="/admin/subscriptions/{{.ID}}">编辑</a></div>
+          </div>
+        </li>
         {{end}}
       </ul>
-      {{else}}
-      <p>暂无订阅。</p>
-      {{end}}
     </section>
+    {{else}}
+    <section class="card empty-state" aria-label="现有订阅">
+      <h2 class="card-title">暂无订阅配置</h2>
+      <p>创建一个新的 Clash 订阅以配置代理节点、分流规则并生成 Mihomo YAML 下载链接。</p>
+    </section>
+    {{end}}
   </main>
 </body>
 </html>

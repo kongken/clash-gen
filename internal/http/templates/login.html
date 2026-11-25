@@ -7,14 +7,26 @@
   <link rel="stylesheet" href="/assets/panel.css">
 </head>
 <body class="auth-page">
-  <main class="auth-card">
-    <h1>管理员登录</h1>
-    <form method="post" action="/login">
-      {{if .}}<p class="form-error" role="alert">{{.}}</p>{{end}}
-      <label for="token">管理 Token</label>
-      <input id="token" name="token" type="password" autocomplete="current-password" required>
-      <button class="button-primary" type="submit">登录</button>
-    </form>
+  <main class="auth-shell">
+    <div class="auth-brand">
+      <span class="brand-mark" aria-hidden="true">&gt;_</span>
+      <div>
+        <h1 class="page-title">Clash 订阅管理</h1>
+        <p class="hint">Mihomo 配置与订阅分发控制台</p>
+      </div>
+    </div>
+    <section class="card auth-card" aria-labelledby="login-heading">
+      <h2 class="card-title" id="login-heading">管理员登录</h2>
+      <form method="post" action="/login">
+        <label for="token">
+          <span class="label-text">管理 Token</span>
+          <input id="token" name="token" type="password" autocomplete="current-password" placeholder="请输入管理员访问令牌" required{{if .}} aria-invalid="true" aria-describedby="login-error"{{end}}>
+        </label>
+        {{if .}}<p class="form-error" id="login-error" role="alert">{{.}}</p>{{end}}
+        <button class="button-primary" type="submit">登录</button>
+      </form>
+    </section>
+    <p class="hint auth-footnote">单管理员控制台 · 仅限内网或受信任 HTTPS 通道访问</p>
   </main>
 </body>
 </html>

@@ -9,14 +9,23 @@
 <body>
   {{template "admin_header"}}
   <main class="panel-container">
-    <section class="panel-section" aria-labelledby="delete-heading">
-      <h1 id="delete-heading">删除订阅</h1>
-      <p>确定删除「{{.Name}}」吗？{{if .Published}}现有下载链接将立即失效。{{end}}</p>
-      {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
-      <form class="form-actions" method="post" action="{{.EditorPath}}/delete">
+    <section class="card confirm-card" aria-labelledby="delete-heading">
+      <div class="card-head"><h1 class="card-title" id="delete-heading">删除订阅</h1></div>
+      <div class="card-body">
+        <p>此操作不可恢复，请核对要删除的订阅：</p>
+        <dl class="confirm-details">
+          <div><dt>订阅名称</dt><dd class="item-title">{{.Name}}</dd></div>
+          <div><dt>最近成功发布</dt><dd>{{with .Published}}<time datetime="{{.PublishedAt.Format "2006-01-02T15:04:05Z07:00"}}" title="UTC">{{formatPublishedAt .PublishedAt}}</time>{{else}}<span class="mono">—</span>{{end}}</dd></div>
+        </dl>
+        {{if .Published}}<p class="banner banner-warning" role="alert">删除后现有下载链接将立即失效，客户端无法再拉取配置。</p>{{end}}
+        {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+      </div>
+      <div class="confirm-actions">
         <a class="button" href="{{.EditorPath}}">取消</a>
-        <button class="button-danger" type="submit" name="confirm" value="1">确认删除</button>
-      </form>
+        <form method="post" action="{{.EditorPath}}/delete">
+          <button class="button-danger-solid" type="submit" name="confirm" value="1">确认删除</button>
+        </form>
+      </div>
     </section>
   </main>
 </body>

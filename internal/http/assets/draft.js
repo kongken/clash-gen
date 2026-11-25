@@ -30,8 +30,11 @@ for (const section of document.querySelectorAll('[data-draft-rows]')) {
 
   function updateRows() {
     const rows = Array.from(list.children);
+    const count = section.querySelector('[data-row-count]');
+    if (count) count.textContent = rows.length;
     rows.forEach((row, index) => {
-      row.querySelector('[data-row-number]').textContent = index + 1;
+      const number = row.querySelector('[data-row-number]');
+      if (number) number.textContent = index + 1;
       updateNodeFields(row);
       row.querySelector('[data-row-action="up"]').disabled = index === 0;
       row.querySelector('[data-row-action="down"]').disabled = index === rows.length - 1;

@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,8 +19,10 @@ var adminHTML embed.FS
 
 var adminTemplates = template.Must(template.New("admin").Funcs(template.FuncMap{
 	"shadowsocksCiphers": subscription.ShadowsocksCiphers,
-	"formatPublishedAt":  func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04:05 UTC") },
+	"formatPublishedAt":  func(at time.Time) string { return at.UTC().Format("2006-01-02 15:04:05") },
 	"vmessCiphers":       subscription.VMessCiphers,
+	"lines":              func(text string) []string { return strings.Split(strings.TrimSuffix(text, "\n"), "\n") },
+	"add":                func(a, b int) int { return a + b },
 	"emptyNode":          func() subscription.Node { return subscription.Node{Type: "ss"} },
 }).ParseFS(adminHTML, "templates/admin_*.html"))
 
@@ -42,6 +45,8 @@ type editPage struct {
 	Preview      string
 	Error        string
 	Notice       string
+	Conflict     bool
+	UploadFailed bool
 	CanPublish   bool
 	DownloadLink string
 }
@@ -165,6 +170,8 @@ func (p *adminPanel) renderEditPage(c *gin.Context, status int, page editPage) {
 		page.Subscription = sub
 		page.CanPublish = p.canPublish()
 		page.DownloadLink = downloadLink(p.baseURL, sub)
+		page.Conflict = status == http.StatusConflict
+		page.UploadFailed = status == http.StatusBadGateway
 		if page.Version == 0 {
 			page.Draft = sub.Draft
 			page.Version = sub.DraftVersion

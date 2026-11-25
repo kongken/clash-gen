@@ -2,18 +2,23 @@
 {{if not .Publication}}未发布{{else if ne .DraftVersion .Publication.DraftVersion}}有未发布变更{{else}}已发布{{end -}}
 {{end}}
 
+{{define "admin_publication_badge" -}}
+<span class="badge{{if .Publication}}{{if ne .DraftVersion .Publication.DraftVersion}} badge-warning{{else}} badge-success{{end}}{{end}}" role="status">{{template "admin_publication_status" .}}</span>
+{{- end}}
+
 {{define "admin_publication_link"}}
-<section class="panel-section" aria-labelledby="published-link-heading">
-  <h2 id="published-link-heading">订阅链接</h2>
-  <div class="form-row">
-    <label for="download-link">下载地址</label>
-    <input id="download-link" value="{{.DownloadLink}}" type="url" readonly>
-    <button type="button" id="copy-download-link">复制链接</button>
-    <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}/reset-link">
-      <button type="submit" aria-describedby="reset-link-notice">重设链接</button>
-    </form>
+<section class="section" aria-labelledby="published-link-heading">
+  <h2 class="section-title" id="published-link-heading">订阅链接</h2>
+  <div class="card card-body">
+    <div class="link-row">
+      <input id="download-link" aria-label="下载地址" value="{{.DownloadLink}}" type="url" readonly>
+      <button type="button" id="copy-download-link">复制链接</button>
+      <form method="post" action="/admin/subscriptions/{{.Subscription.ID}}/reset-link">
+        <button class="button-danger" type="submit" aria-describedby="reset-link-notice">重设链接</button>
+      </form>
+    </div>
+    <p id="copy-feedback" role="status" hidden></p>
+    <p class="hint" id="reset-link-notice">重设后，旧链接将立即失效。</p>
   </div>
-  <p id="copy-feedback" role="status" hidden></p>
-  <p id="reset-link-notice">重设后，旧链接将立即失效。</p>
 </section>
 {{end}}
