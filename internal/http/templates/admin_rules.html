@@ -1,0 +1,54 @@
+{{define "admin_rules"}}
+<section class="section" data-draft-rows aria-labelledby="rules-heading">
+  <div class="section-head">
+    <div>
+      <h2 class="section-title" id="rules-heading">分流规则</h2>
+      <span class="count-badge" data-row-count>{{len .Draft.Rules}}</span>
+    </div>
+    <button class="button-compact" type="button" data-row-action="add">添加规则</button>
+  </div>
+  <div class="rule-table">
+    <div class="rule-list" data-row-list>{{range $index, $rule := .Draft.Rules}}{{template "admin_rule_row" (ruleRow $rule $index $.RowError)}}{{end}}</div>
+    <template data-row-template>{{template "admin_rule_row" emptyRuleRow}}</template>
+    <div class="rule-footer">
+      <span class="match-tag"><code>MATCH</code><span class="hint">兜底规则，固定位于规则列表末尾</span></span>
+      <label>
+        <select name="match_target" aria-label="MATCH 默认去向">{{template "admin_rule_targets" .Draft.MatchTarget}}</select>
+      </label>
+    </div>
+  </div>
+</section>
+{{end}}
+
+{{define "admin_rule_row"}}
+{{$row := .}}
+{{with .Value}}
+<div class="rule-row{{if $row.Error}} row-invalid{{end}}" data-row data-row-label="规则" role="group" aria-label="规则 {{$row.Number}}"{{if $row.Error}} aria-describedby="rule-row-error"{{end}}>
+  <span class="rule-number mono">#<span data-row-number>{{if $row.Number}}{{$row.Number}}{{end}}</span></span>
+  <label><span class="label-text">类型</span>
+    <select name="rule_type">
+      <option value="DOMAIN"{{if eq .Type "DOMAIN"}} selected{{end}}>DOMAIN（域名）</option>
+      <option value="DOMAIN-SUFFIX"{{if eq .Type "DOMAIN-SUFFIX"}} selected{{end}}>DOMAIN-SUFFIX（域名后缀）</option>
+      <option value="IP-CIDR"{{if eq .Type "IP-CIDR"}} selected{{end}}>IP-CIDR（IP 网段）</option>
+    </select>
+  </label>
+  <label><span class="label-text">匹配值</span>
+    <input name="rule_value" value="{{.Value}}" autocapitalize="off" spellcheck="false" placeholder="匹配值"></label>
+  <label><span class="label-text">去向</span>
+    <select name="rule_target">{{template "admin_rule_targets" .Target}}</select>
+  </label>
+  <span class="row-tools">
+    <button class="button-icon" type="button" data-row-action="up" aria-label="上移规则">↑</button>
+    <button class="button-icon" type="button" data-row-action="down" aria-label="下移规则">↓</button>
+    <button class="button-icon button-danger" type="button" data-row-action="remove" aria-label="删除规则">✕</button>
+  </span>
+  {{if $row.Error}}<p class="row-error" id="rule-row-error">{{$row.Error}}</p>{{end}}
+</div>
+{{end}}
+{{end}}
+
+{{define "admin_rule_targets"}}
+  <option value="PROXY"{{if eq . "PROXY"}} selected{{end}}>PROXY（节点选择）</option>
+  <option value="DIRECT"{{if eq . "DIRECT"}} selected{{end}}>DIRECT（直连）</option>
+  <option value="REJECT"{{if eq . "REJECT"}} selected{{end}}>REJECT（拦截）</option>
+{{end}}

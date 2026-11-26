@@ -1,0 +1,30 @@
+{{define "admin_settings"}}
+<section class="section" aria-labelledby="settings-heading">
+  <h2 class="section-title" id="settings-heading">基础设置</h2>
+  <div class="card card-body">
+    <div class="field-grid">
+      <label><span class="label-text">混合端口 (mixed-port)</span>
+        <input name="mixed_port" value="{{.MixedPort}}" placeholder="7890" inputmode="numeric"></label>
+      <label><span class="label-text">日志级别 (log-level)</span>
+        <select name="log_level">
+          <option value=""{{if eq .LogLevel "info"}} selected{{end}}>info（默认）</option>
+          <option value="silent"{{if eq .LogLevel "silent"}} selected{{end}}>silent</option>
+          <option value="error"{{if eq .LogLevel "error"}} selected{{end}}>error</option>
+          <option value="warning"{{if eq .LogLevel "warning"}} selected{{end}}>warning</option>
+          <option value="debug"{{if eq .LogLevel "debug"}} selected{{end}}>debug</option>
+        </select>
+      </label>
+    </div>
+    <div class="setting-toggle">
+      <div>
+        <span class="label-text">启用内置 DNS 解析</span>
+        <span class="hint">开启后将在生成的 YAML 中输出 dns 配置与上游服务器列表</span>
+      </div>
+      <label class="check-label"><input type="checkbox" name="dns_enabled" value="1"{{if .DNSEnabled}} checked{{end}}> 启用 DNS</label>
+    </div>
+    <label for="dns-upstreams"><span class="label-text">DNS 上游地址（每行一个）</span>
+      <textarea id="dns-upstreams" name="dns_upstreams" rows="3" spellcheck="false">{{.DNSUpstreams}}</textarea>
+    </label>
+  </div>
+</section>
+{{end}}
