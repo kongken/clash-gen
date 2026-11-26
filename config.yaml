@@ -6,6 +6,7 @@ base_url: "http://localhost:8080"
 # redis_url: "redis://127.0.0.1:6379/0"
 # object_store:
 #   endpoint: "http://127.0.0.1:9000"
+#   cdn_domain: "https://cdn.example.net"
 #   bucket: "clash-subscriptions"
 #   region: "us-east-1"
 #   prefix: "clash-gen"

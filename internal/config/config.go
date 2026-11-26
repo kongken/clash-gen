@@ -20,6 +20,7 @@ type ServiceConfig struct {
 
 type ObjectStoreConfig struct {
 	Endpoint        string `yaml:"endpoint"`
+	CDNDomain       string `yaml:"cdn_domain"`
 	Bucket          string `yaml:"bucket"`
 	Region          string `yaml:"region"`
 	Prefix          string `yaml:"prefix"`
