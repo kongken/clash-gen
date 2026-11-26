@@ -13,6 +13,7 @@ function updateNodeFields(row) {
 
   const features = {
     tls: protocol === 'trojan' || (protocol !== 'ss' && security.value !== ''),
+    certificate: protocol === 'trojan' || (protocol !== 'ss' && security.value === 'tls'),
     ws: protocol !== 'ss' && network === 'ws',
     reality: allowsReality && security.value === 'reality',
   };

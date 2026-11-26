@@ -87,6 +87,9 @@ func (n Node) addTLSOptions(proxy map[string]any, network string) error {
 	case "":
 		return nil
 	case "tls":
+		if n.SkipCertVerify {
+			proxy["skip-cert-verify"] = true
+		}
 	case "reality":
 		if n.Type != "vless" || network != "tcp" {
 			return errors.New("REALITY 需要使用 TCP 传输的 VLESS 节点。")

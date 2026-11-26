@@ -18,6 +18,7 @@ const (
 func TestMixedProtocolDraftAndPreview(t *testing.T) {
 	router, cookie, path := newDraftEditor(t, "多协议订阅")
 	form := mixedProtocolForm("多协议订阅", "1")
+	form["node_skip_cert_verify"] = []string{"true", "true", "true", "", "false", "", "", "", "true", "true", "", "true", "false"}
 	names := form["node_name"]
 	if save := authRequest(router, http.MethodPost, path, form, cookie); save.Code != http.StatusSeeOther {
 		t.Fatalf("save mixed protocol draft returned %d", save.Code)
@@ -25,7 +26,8 @@ func TestMixedProtocolDraftAndPreview(t *testing.T) {
 	edit := authRequest(router, http.MethodGet, path, nil, cookie)
 	if edit.Code != http.StatusOK || !strings.Contains(edit.Body.String(), `name="node_name" value="Trojan WS"`) ||
 		!strings.Contains(edit.Body.String(), `value="reality" selected`) || !strings.Contains(edit.Body.String(), `value="xtls-rprx-vision" selected`) ||
-		!strings.Contains(edit.Body.String(), `name="node_ws_path" value="/vless?lane=1"`) {
+		!strings.Contains(edit.Body.String(), `name="node_ws_path" value="/vless?lane=1"`) ||
+		strings.Count(edit.Body.String(), `<option value="true" selected>跳过验证`) != 3 {
 		t.Fatalf("saved protocol inputs were not restored by editor (status %d)", edit.Code)
 	}
 
@@ -72,6 +74,11 @@ func TestMixedProtocolDraftAndPreview(t *testing.T) {
 			if !reflect.DeepEqual(proxy[key], want) {
 				t.Errorf("proxy %q: %s = %#v, want %#v", names[index], key, proxy[key], want)
 			}
+		}
+		value, present := proxy["skip-cert-verify"]
+		wantSkip := names[index] == "VMess TCP TLS" || names[index] == "VLESS WS TLS" || names[index] == "Trojan TCP"
+		if present != wantSkip || (present && value != true) {
+			t.Errorf("proxy %q: skip-cert-verify = %v (present %t), want enabled %t", names[index], value, present, wantSkip)
 		}
 	}
 	verifyMihomoYAML(t, output)
