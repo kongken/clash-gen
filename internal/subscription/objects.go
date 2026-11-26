@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -19,6 +21,7 @@ const YAMLContentType = "application/yaml; charset=utf-8"
 // S3Objects stores published YAML in a provisioned private bucket.
 type S3Objects struct {
 	client *s3.Client
+	cdnURL *url.URL
 	bucket string
 	prefix string
 }
@@ -32,6 +35,18 @@ func NewS3Objects(cfg config.ObjectStoreConfig) (*S3Objects, error) {
 	}
 	if strings.TrimSpace(cfg.Bucket) == "" || cfg.AccessKeyID == "" || cfg.SecretAccessKey == "" {
 		return nil, errors.New("object_store requires a private bucket, access key ID and secret access key")
+	}
+	var cdnURL *url.URL
+	if domain := strings.TrimSpace(cfg.CDNDomain); domain != "" {
+		if !strings.Contains(domain, "://") {
+			domain = "https://" + domain
+		}
+		cdnURL, err = url.Parse(domain)
+		if err != nil || (cdnURL.Scheme != "https" && cdnURL.Scheme != "http") ||
+			cdnURL.Hostname() == "" || cdnURL.User != nil || cdnURL.ForceQuery ||
+			cdnURL.RawQuery != "" || strings.Contains(domain, "#") {
+			return nil, errors.New("object_store.cdn_domain must be a hostname or an absolute HTTP or HTTPS URL without credentials, query or fragment")
+		}
 	}
 	region := cfg.Region
 	if region == "" {
@@ -49,7 +64,7 @@ func NewS3Objects(cfg config.ObjectStoreConfig) (*S3Objects, error) {
 	if prefix != "" {
 		prefix += "/"
 	}
-	return &S3Objects{client: client, bucket: cfg.Bucket, prefix: prefix}, nil
+	return &S3Objects{client: client, cdnURL: cdnURL, bucket: cfg.Bucket, prefix: prefix}, nil
 }
 
 func (s *S3Objects) put(ctx context.Context, key string, yaml []byte) error {
@@ -61,6 +76,9 @@ func (s *S3Objects) put(ctx context.Context, key string, yaml []byte) error {
 }
 
 func (s *S3Objects) get(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	if s.cdnURL != nil {
+		return s.getFromCDN(ctx, key)
+	}
 	object, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key)})
 	if err != nil {
 		return nil, 0, err
@@ -70,6 +88,24 @@ func (s *S3Objects) get(ctx context.Context, key string) (io.ReadCloser, int64, 
 		length = *object.ContentLength
 	}
 	return object.Body, length, nil
+}
+
+func (s *S3Objects) getFromCDN(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	objectPath := url.URL{Path: "/" + key}
+	objectURL := strings.TrimRight(s.cdnURL.String(), "/") + objectPath.EscapedPath()
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, objectURL, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	response, err := http.DefaultClient.Do(request)
+	if err != nil {
+		return nil, 0, err
+	}
+	if response.StatusCode != http.StatusOK {
+		response.Body.Close()
+		return nil, 0, fmt.Errorf("object CDN returned HTTP %d", response.StatusCode)
+	}
+	return response.Body, response.ContentLength, nil
 }
 
 func (s *S3Objects) delete(ctx context.Context, key string) error {

@@ -36,6 +36,7 @@ admin_token: replace-with-a-long-random-secret
 redis_url: redis://redis:6379/0
 object_store:
   endpoint: http://minio:9000
+  # cdn_domain: https://cdn.example.net
   bucket: clash-subscriptions
   region: us-east-1
   prefix: clash-gen
@@ -52,6 +53,16 @@ proxy to strip that prefix when forwarding downloads to Gin's
 origin root. Keep the storage API on the private network. Configure any reverse
 proxy to omit query strings from download request logs because they contain
 download Tokens. Path-style addressing is enabled by default.
+
+Set `object_store.cdn_domain` to read published YAML through a CDN after the
+service validates the download token. Client links use `base_url`, and uploads
+and cleanup use `object_store.endpoint`. A bare hostname uses HTTPS. The service
+appends the full object key, including `prefix`, to the CDN URL. Configure the
+CDN URL to point at the bucket root, for example `https://cdn.example.net` or
+`https://cdn.example.net/clash-subscriptions` when the CDN requires a bucket
+path. Restrict CDN access to the application and give the CDN read access to
+the private bucket. Keep the CDN cache TTL within your data retention needs.
+Without `cdn_domain`, reads use the S3 API at `endpoint`.
 
 For a container deployment, mount the file and point Butterfly at it. Replace
 `your-app-network` with the network that reaches Redis and MinIO.

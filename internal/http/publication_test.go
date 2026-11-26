@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -24,6 +25,57 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/html"
 )
+
+func TestPublishedDownloadUsesConfiguredCDN(t *testing.T) {
+	var uploads, reads atomic.Int32
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut || !strings.HasPrefix(r.URL.Path, "/private/custom prefix/") {
+			t.Errorf("unexpected S3 request %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		uploads.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer origin.Close()
+	const yaml = "proxies: []\n"
+	cdn := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reads.Add(1)
+		if r.Method != http.MethodGet || !strings.HasPrefix(r.URL.EscapedPath(), "/edge/custom%20prefix/") ||
+			r.URL.RawQuery != "" || r.Header.Get("Authorization") != "" {
+			t.Errorf("unexpected CDN request %s %s", r.Method, r.URL.EscapedPath())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		_, _ = w.Write([]byte(yaml))
+	}))
+	defer cdn.Close()
+	fixture := publicationFixture{
+		redisOptions: &redis.Options{Addr: miniredis.RunT(t).Addr()},
+		s3Config: config.ObjectStoreConfig{
+			Endpoint: origin.URL, CDNDomain: cdn.URL + "/edge/", Bucket: "private", Prefix: "custom prefix",
+			AccessKeyID: "test-key", SecretAccessKey: "test-secret",
+		},
+		baseURL: &url.URL{Scheme: "https", Host: "clash.example.test"},
+	}
+	router, _ := fixture.router(t)
+	cookie, editor := publicationEditor(t, router, "CDN test")
+	if response := authRequest(router, http.MethodPost, editor+"/publish", publicationForm("CDN test", "test node", "1"), cookie); response.Code != http.StatusSeeOther {
+		t.Fatalf("publish returned %d", response.Code)
+	}
+	page := authRequest(router, http.MethodGet, editor, nil, cookie)
+	link := readPublishedLink(t, page.Body.String())
+	if link.Host != fixture.baseURL.Host {
+		t.Fatalf("download link uses %q, want %q", link.Host, fixture.baseURL.Host)
+	}
+	if response := authRequest(router, http.MethodGet, link.Path+"?token=invalid", nil, nil); response.Code != http.StatusNotFound || reads.Load() != 0 {
+		t.Fatalf("unauthorized download returned %d with %d CDN reads", response.Code, reads.Load())
+	}
+	download := authRequest(router, http.MethodGet, link.RequestURI(), nil, nil)
+	if download.Code != http.StatusOK || download.Body.String() != yaml || uploads.Load() != 1 || reads.Load() != 1 {
+		t.Fatalf("download returned %d %q with %d S3 uploads and %d CDN reads", download.Code, download.Body.String(), uploads.Load(), reads.Load())
+	}
+}
 
 func TestPublishPreviewMatchesAnonymousDownload(t *testing.T) {
 	fixture := newPublicationFixture(t)
