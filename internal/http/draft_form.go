@@ -41,7 +41,7 @@ func readNodes(form url.Values) ([]subscription.Node, error) {
 	for _, field := range []string{
 		"node_type", "node_server", "node_port", "node_cipher", "node_password",
 		"node_network", "node_security", "node_uuid", "node_alter_id", "node_vmess_cipher",
-		"node_sni", "node_ws_path", "node_ws_host", "node_reality_key", "node_reality_short_id", "node_flow",
+		"node_sni", "node_skip_cert_verify", "node_ws_path", "node_ws_host", "node_reality_key", "node_reality_short_id", "node_flow",
 	} {
 		if length := len(form[field]); length != 0 && length != count {
 			return nil, errors.New("节点表单字段不完整，请刷新后重试。")
@@ -91,6 +91,9 @@ func readNodes(form url.Values) ([]subscription.Node, error) {
 			if node.Type == "vmess" {
 				node.AlterID = value("alter_id")
 				node.VMessCipher = value("vmess_cipher")
+			}
+			if node.Type == "trojan" || node.Security == "tls" {
+				node.SkipCertVerify = value("skip_cert_verify") == "true"
 			}
 		}
 		nodes[index] = node

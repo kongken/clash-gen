@@ -18,6 +18,7 @@
 {{$ss := or (eq .Type "") (eq .Type "ss")}}
 {{$uuid := or (eq .Type "vmess") (eq .Type "vless")}}
 {{$trojan := eq .Type "trojan"}}
+{{$tls := or $trojan (and $uuid (eq .Security "tls"))}}
 {{$ws := and (not $ss) (eq .Network "ws")}}
 {{$allowsReality := and (eq .Type "vless") (not $ws)}}
 {{$reality := and $allowsReality (eq .Security "reality")}}
@@ -86,6 +87,12 @@
     <p class="hint" data-node-protocols="trojan"{{if not $trojan}} hidden{{end}}>Trojan 始终使用 TLS。</p>
     <label data-node-feature="tls"{{if not (or $trojan (and $uuid .Security))}} hidden{{end}}><span class="label-text">SNI</span>
       <input name="node_sni" value="{{.ServerName}}" autocapitalize="off" spellcheck="false">
+    </label>
+    <label data-node-feature="certificate"{{if not $tls}} hidden{{end}}><span class="label-text">TLS 证书验证</span>
+      <select name="node_skip_cert_verify">
+        <option value="false">验证证书</option>
+        <option value="true"{{if and $tls .SkipCertVerify}} selected{{end}}>跳过验证（允许不安全连接）</option>
+      </select>
     </label>
     <label data-node-feature="ws"{{if not $ws}} hidden{{end}}><span class="label-text">WebSocket 路径</span>
       <input name="node_ws_path" value="{{.WSPath}}" placeholder="/" autocapitalize="off" spellcheck="false">

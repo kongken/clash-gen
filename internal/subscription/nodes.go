@@ -22,6 +22,7 @@ type Node struct {
 	Password       string `json:"password"`
 	Network        string `json:"network,omitempty"`
 	Security       string `json:"security,omitempty"`
+	SkipCertVerify bool   `json:"skip_cert_verify,omitempty"`
 	UUID           string `json:"uuid,omitempty"`
 	AlterID        string `json:"alter_id,omitempty"`
 	VMessCipher    string `json:"vmess_cipher,omitempty"`
